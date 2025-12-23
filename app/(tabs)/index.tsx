@@ -72,21 +72,21 @@ export default function onboarding (){
 
                     <View style={{marginTop: 250, flexDirection:'column', alignItems: 'center', gap: 10, marginBottom: 10}}>
                         <TouchableOpacity
-                        // onPress={() => router.navigate('/auth/CreateAccount')}
+                        onPress={() => router.navigate('/auth/CreateAccount')}
                         style={{backgroundColor: 'white', padding: 10, width: 213, borderRadius: 8}}
                         >
                             <Text style={{fontSize: 16, fontWeight: 700, color: '#001718', textAlign: 'center'}}>Create account</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                         style={{backgroundColor: 'white', padding: 10, width: 213, borderRadius: 8}}
-                        // onPress={() => router.navigate('/(tabs)/HomePage')}
+                        onPress={() => router.navigate('/(tabs)/HomePage')}
                         >
                             <Text style={{fontSize: 16, fontWeight: 700, color: '#001718', textAlign: 'center'}}>Continue as guest</Text>
                         </TouchableOpacity>
                     </View>
 
                     <TouchableOpacity
-                    // onPress={() => router.navigate('/auth/Login')}
+                    onPress={() => router.navigate('/auth/Login')}
                     >
                         <Text style={{fontSize: 16, fontWeight: 700, color: 'white', textAlign: 'center'}}>Already have an account? Login</Text>
                     </TouchableOpacity>
