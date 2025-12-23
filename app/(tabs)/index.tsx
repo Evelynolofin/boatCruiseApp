@@ -1,98 +1,106 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { ScrollView,
+        Text,
+        Image,
+        View,
+        StatusBar,
+        ImageBackground,
+        StyleSheet,
+        TouchableOpacity,
+        Dimensions,
+ } from "react-native";
+import { router } from "expo-router";
+import { useState, useEffect, useRef } from "react";
+import * as SplashScreen from "expo-splash-screen";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+const {height} = Dimensions.get('window')
 
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
+SplashScreen.preventAutoHideAsync();
+let ShownSplash = false;
+
+export default function onboarding (){
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+       async function prepare (){
+         if (!ShownSplash){
+            ShownSplash = true
+            
+            await new Promise(resolve => setTimeout(resolve, 7000));
+        } 
+        setLoading(true)
+        await SplashScreen.hideAsync();
+       }
+       prepare()
+      }, []);
+
+    if (!loading) {
+        return (
+          <View style={[styles.loaderContainer, {flexDirection:'row', alignItems: 'center', backgroundColor: '#004064', gap: 10}]}>
+            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+            <Image
+            source={require('@/assets/images/logo.png')}
             />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+            <Text style={{fontFamily:'Arimo_700Bold', fontWeight:700, fontSize: 18, color:'white'}}>BoatCruise</Text>
+          </View>
+        );
+    }
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
+    return(
+        <>
+            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+            <ImageBackground
+            source={require('@/assets/images/image 29.png')}
+            style={{flex:1}}
+            >
+                <View style={{paddingHorizontal: 20, marginTop: 50}}>
+                    <View style={{flexDirection: 'row', marginTop: 40, alignItems: 'center', gap:10}}>
+                    <Image
+                    source={require('@/assets/images/logo.png')}
+                    />
+                    <Text style={{fontFamily: 'Arimo_700Bold', fontWeight: 700, fontSize: 18, color:'white'}}>BoatCruise</Text>
+                    </View>
+
+                    <View>
+                        <Text style={{fontFamily:'Arimo_700Bold', fontWeight: 700, fontSize: 36, width: 243, color: 'white', paddingVertical: 16}}>
+                            We’ve got a Boat for every moment.
+                        </Text>
+
+                        <Text style={{fontFamily:'Arimo_700Bold', fontWeight: 700, fontSize: 16, width: 150, color: 'white'}}>
+                            Couple date night? Company cruise? Birthday cruise?
+                        </Text>
+                    </View>
+
+                    <View style={{marginTop: 250, flexDirection:'column', alignItems: 'center', gap: 10, marginBottom: 10}}>
+                        <TouchableOpacity
+                        // onPress={() => router.navigate('/auth/CreateAccount')}
+                        style={{backgroundColor: 'white', padding: 10, width: 213, borderRadius: 8}}
+                        >
+                            <Text style={{fontSize: 16, fontWeight: 700, color: '#001718', textAlign: 'center'}}>Create account</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                        style={{backgroundColor: 'white', padding: 10, width: 213, borderRadius: 8}}
+                        // onPress={() => router.navigate('/(tabs)/HomePage')}
+                        >
+                            <Text style={{fontSize: 16, fontWeight: 700, color: '#001718', textAlign: 'center'}}>Continue as guest</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity
+                    // onPress={() => router.navigate('/auth/Login')}
+                    >
+                        <Text style={{fontSize: 16, fontWeight: 700, color: 'white', textAlign: 'center'}}>Already have an account? Login</Text>
+                    </TouchableOpacity>
+                </View>
+            </ImageBackground>
+        </>
+    )
 }
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+
+const styles= StyleSheet.create({
+    loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+})
