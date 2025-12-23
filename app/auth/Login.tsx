@@ -1,6 +1,5 @@
 import {httpClient} from "@/constants/httpClient";
 import {saveToken} from "@/constants/tokenFile";
-// import * as SecureStore from "expo-secure-store";
 import {Ionicons} from "@expo/vector-icons";
 import axios from "axios";
 import {router} from "expo-router";
