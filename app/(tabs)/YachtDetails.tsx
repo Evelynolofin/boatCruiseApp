@@ -188,10 +188,10 @@ export default function YachtDetails() {
                                           <Text style={{fontSize: 16, marginVertical: 10,}}>Settings</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity>
-                                          <Text style={{fontSize: 16, marginVertical: 10,}}>Change Number</Text>
+                                          {/* <Text style={{fontSize: 16, marginVertical: 10,}}>Change Number</Text> */}
                                         </TouchableOpacity>
                                         <TouchableOpacity>
-                                          <Text style={{fontSize: 16, marginVertical: 10,}}>Change Password</Text>
+                                          {/* <Text style={{fontSize: 16, marginVertical: 10,}}>Change Password</Text> */}
                                         </TouchableOpacity>
                                         <TouchableOpacity>
                                           <Text style={{fontSize: 16, marginVertical: 10,}}>Logout</Text>
@@ -385,20 +385,6 @@ export default function YachtDetails() {
         </View>
       </ScrollView>
 
-      {profile && (
-        <Animated.View
-          style={[
-            styles.panel,
-            { transform: [{ translateX: slideAnim }] },
-          ]}
-        >
-          <Text style={{ fontSize: 18, fontWeight: "bold" }}>Profile</Text>
-          <TouchableOpacity onPress={closePanel}>
-            <Text style={{ color: "red", marginTop: 20 }}>Close</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      )}
-
       <Modal
         isVisible={galleryVisible}
         onBackdropPress={() => setGalleryVisible(false)}
@@ -535,11 +521,15 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0,
     top: 0,
-    bottom: 0,
     width: PANEL_WIDTH,
-    backgroundColor: "white",
+    backgroundColor: "#fff",
     padding: 20,
-    elevation: 6,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    borderBottomLeftRadius:7,
+    borderTopLeftRadius:7
   },
 
   galleryContainer: {

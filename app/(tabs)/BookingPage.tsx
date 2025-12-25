@@ -1,8 +1,9 @@
 import { httpClient } from "@/constants/httpClient";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useRef, useState, useEffect } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
@@ -19,6 +20,7 @@ import {
 import { Calendar } from "react-native-calendars";
 import Modal from "react-native-modal";
 import { WebView } from "react-native-webview";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type UserParams ={
   email?: string,
@@ -32,7 +34,7 @@ type Boat = {
   _id: string;
   pricePerHour: number;
   capacity: number;
-  location: string;
+  location:{name:string};
   reviews: number;
   imageUrl: string;
   boatType: string;
@@ -66,7 +68,7 @@ const buildISODateTime = (date: string, time: Date) => {
 
 export default function BookingPage(){
     const params = useLocalSearchParams<UserParams>();
-    const [bookingRef, setBookingRef] = useState<string | null>(null);
+    const [paymentReference, setPaymentReference] = useState<string | null>(null)
     const { boatId } = useLocalSearchParams<{ boatId: string }>();
 
     const [boat, setBoat] = useState<Boat | null>(null);
@@ -96,9 +98,9 @@ export default function BookingPage(){
         }).start(() => setProfile(false));
       };
 
-    const user ={
-      email: params.email ?? "",
-    }
+    // const user ={
+    //   email: params.email ?? "",
+    // }
 
     const [step, setStep] = useState(1)
 
@@ -128,6 +130,17 @@ export default function BookingPage(){
     const [specialRequest, setSpecialRequest] = useState("");
 
     const [paystackUrl, setPaystackUrl] = useState<string | null>(null);
+
+    const [userEmail, setUserEmail] = useState<string | null>(null);
+
+    const [user, setUser] = useState(null);
+
+    useEffect(() => {
+      AsyncStorage.getItem("userEmail").then((email) => {
+        setUserEmail(email);
+      });
+    }, []);
+
     
 
     const occasionOpt = [
@@ -230,6 +243,7 @@ export default function BookingPage(){
       setMethod(method === selected ? null : selected);
     }
 
+    let boatName: string = boat?.boatName || "Unknown Boat";    
     
     const goToBookingDetails = () => {
     router.push({
@@ -245,113 +259,109 @@ export default function BookingPage(){
         guest: guest.toString(),
         occasion: occasion,
         total: totalAmount.toString(),
+        paymentReference,      
+        // location: location?.name,
+        boatName,
+ 
       },
     });
 };
 
-    const mainBoatImage = useMemo(() => {
-      if (Array.isArray(boat?.media) && boat.media.length > 0) {
-        return boat.media[0].url;
-      }
-      return null;
-    }, [boat]);
+const handleLogout = async () => {
+  try {
+    await AsyncStorage.removeItem("token");
+    await AsyncStorage.removeItem("user");
+
+    delete httpClient.defaults.headers.common["Authorization"];
+
+    setProfile(false);
+
+    router.replace("/auth/Login");
+  } catch (error) {
+    console.error("Logout failed", error);
+  }
+};
+
+
+const mainBoatImage = useMemo(() => {
+  if (Array.isArray(boat?.media) && boat.media.length > 0) {
+    return boat.media[0].url;
+  }
+  return null;
+}, [boat]);
 
 
 
-  const createBooking = () => {
+const createBooking = async () => {
   if (!selectedDate) return Alert.alert("Error", "Select a date");
-  console.log('I AM HERE 1')
-  if (endTime <= startTime)
-    return Alert.alert("Error", "End time must be after start time");
-  console.log('I AM HERE 2')
+  if (endTime <= startTime) return Alert.alert("Error", "End time must be after start time");
+  if (!guest) return Alert.alert("Error", "Select Guest");
   if (!occasion) return Alert.alert("Error", "Select occasion");
-    console.log('I AM HERE 3')
-  setLoading(true);
 
-  console.log('I AM HERE 4')
-   httpClient
-    .post("/bookings/initialize", {
+  try {
+    setLoading(true);
+
+    const res = await httpClient.post("/bookings/initialize", {
       boatId: boatId || BOAT_ID,
       startDate: buildISODateTime(selectedDate, startTime),
       endDate: buildISODateTime(selectedDate, endTime),
       numberOfGuest: guest,
       occasion,
       specialRequest,
-    })
-    
-    .then((res) => {
-      setBookingRef(
-        res.data?.bookingReference ||
-        res.data?.data?.bookingReference ||
-        ""
-      );
-
-      setPaystackUrl(
-        res.data?.authorization_url ||
-        res.data?.data?.authorization_url ||
-        ""
-      );
-    })
-    .catch((err: any) => {
-      console.log(err)
-      Alert.alert(
-        "Error",
-        err.response?.data?.message || "Booking failed"
-      );
-    })
-    .finally(() => {
-      setLoading(false);
     });
-};
 
+    console.log("Booking initialized:", res.data);
 
-
-  const verifyPayment = async () => {
-    if (!bookingRef) return;
-
-    try {
-      setLoading(true);
-      console.log('I AM HERE 6')
-      const res = await httpClient.get(
-        `/bookings/verify/${bookingRef}`
-      );
-        console.log(res)
-
-      if (res.data?.status === "success") {
-        setShowSuccess(true);
-      } else {
-        Alert.alert("Payment not confirmed yet");
-      }
-    } catch (err: any) {
-      console.log(err)
-      Alert.alert(
-        "Verification failed",
-        err.response?.data?.message || "Unable to verify payment"
-      );
-    } finally {
-      setLoading(false);
+    const responseData = res.data?.data || res.data;
+    
+    if (!responseData) {
+      console.error("Invalid response structure:", res.data);
+      Alert.alert("Error", "Invalid response from server");
+      return;
     }
-  };
 
-if (paystackUrl) {
-  return (
-    <WebView
-      source={{ uri: paystackUrl }}
-      startInLoadingState
-      onNavigationStateChange={(nav) => {
-        if (
-          nav.url.includes("payment-success") &&
-          bookingRef
-        ) {
-          setPaystackUrl(null);
+    const paymentReference = responseData.paymentReference 
+      || responseData.reference 
+      || responseData.payment_reference;
+    
+    const paystackLink = responseData.paymentUrl         
+      || responseData.authorization_url 
+      || responseData.authorizationUrl
+      || responseData.payment_url;
 
-          verifyPayment();
-        }
-      }}
-    />
-  );
-}
+    if (!paystackLink) {
+      console.error("Missing payment URL. Available fields:", Object.keys(responseData));
+      Alert.alert("Error", "Payment link not received from server");
+      return;
+    }
 
+    if (!paymentReference) {
+      console.error("Missing payment reference. Available fields:", Object.keys(responseData));
+      Alert.alert("Error", "Payment reference not generated");
+      return;
+    }
+
+    setPaymentReference(paymentReference);
+    setPaystackUrl(paystackLink);
+    setShowSuccess(true)
+
+    console.log("Payment initialized successfully:", {
+      reference: paymentReference,
+      url: paystackLink
+    });
+
+  } catch (err: any) {
+    console.error("Booking error:", err);
+    
+    const errorMessage = err.response?.data?.message 
+      || err.message 
+      || "Booking failed. Please try again.";
+    
+    Alert.alert("Error", errorMessage);
+  } finally {
+    setLoading(false);
+  }
+};
 
     return(
         <>
@@ -445,7 +455,9 @@ if (paystackUrl) {
                                 <TouchableOpacity>
                                   <Text style={{fontSize: 16, marginVertical: 10,}}>Change Password</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity>
+                                <TouchableOpacity
+                                  onPress={handleLogout}
+                                >
                                   <Text style={{fontSize: 16, marginVertical: 10,}}>Logout</Text>
                                 </TouchableOpacity>
 
@@ -733,7 +745,7 @@ if (paystackUrl) {
                       <View>
                         <View style={styles.info}>
                           <Text style={styles.footerLabel}> Full name</Text>
-                          <Text style={styles.footerText}> {fullName}</Text>
+                          <Text style={styles.footerText}> {userEmail}</Text>
                         </View>
                         <View style={styles.info}>
                           <Text style={styles.footerLabel}> Email address</Text>
@@ -765,11 +777,13 @@ if (paystackUrl) {
                         <View style={[styles.info, {paddingTop: 15, borderBottomWidth: 1,borderColor: "#0000001A", borderTopWidth: 1
                             }]}>
                           <Text style={styles.footerLabel}>₦{pricePerHour.toLocaleString()} × {duration} hour</Text>
-                          <Text style={styles.footerText}>₦{Number(boat?.pricePerHour ?? 0).toLocaleString()}</Text>
+                          <Text style={styles.footerText}>₦{totalAmount.toLocaleString()}</Text>
                         </View>
                         <View style={{flexDirection: 'row', justifyContent: 'space-between',alignItems: 'center',paddingTop: 29.06,}}>
                           <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>Total</Text>
-                          <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>₦{totalAmount.toLocaleString()}</Text>
+                          <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>
+                            ₦{totalAmount.toLocaleString()}
+                          </Text>
                         </View>
                       </View>
                     </View>
@@ -917,11 +931,13 @@ if (paystackUrl) {
                         <View style={[styles.info, {paddingTop: 15, borderBottomWidth: 1,borderColor: "#0000001A", borderTopWidth: 1
                             }]}>
                           <Text style={styles.footerLabel}>₦{pricePerHour.toLocaleString()} × {duration} hour</Text>
-                          <Text style={styles.footerText}>₦{Number(boat?.pricePerHour ?? 0).toLocaleString()}</Text>
+                          <Text style={styles.footerText}>₦{totalAmount.toLocaleString()}</Text>
                         </View>
                         <View style={{flexDirection: 'row', justifyContent: 'space-between',alignItems: 'center',paddingTop: 29.06,}}>
                           <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>Total</Text>
-                          <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>₦{totalAmount.toLocaleString()}</Text>
+                          <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>
+                            ₦{totalAmount.toLocaleString()}
+                          </Text>
                         </View>
                       </View>
                     </View>
@@ -951,136 +967,6 @@ if (paystackUrl) {
                   <View>
                     {step === 3 && 
                     <View>
-                      <View
-                      style={{marginVertical: 11.32, paddingHorizontal: 10, backgroundColor: 'white', borderRadius: 11.69,
-                      marginHorizontal: 14, paddingVertical: 30, justifyContent: 'center'
-                      }}
-                      >
-                        <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:14, color: '#0A0A0A', lineHeight: 13.51}}>
-                          Payment Details
-                        </Text>
-                        <Text style={{fontSize: 12, color: '#0A0A0A', fontFamily: 'Inter_400Regular', fontWeight: 400, paddingTop: 16, paddingBottom: 8}}>
-                          Select payment method
-                        </Text>
-
-                        <Text style={{}}>
-                          Total: ₦{totalAmount.toLocaleString()}
-                        </Text>
-
-                        <TouchableOpacity
-                          style={{}}
-                          disabled={loading}
-                          onPress={createBooking}
-                        >
-                          <Text style={{}}>
-                            {loading ? "Processing..." : "Pay with Paystack"}
-                          </Text>
-                        </TouchableOpacity>
-                        
-                      </View>
-
-                      {/* <View
-                      style={{marginVertical: 11.32, paddingHorizontal: 10, backgroundColor: 'white', borderRadius: 11.69,
-                      marginHorizontal: 14, paddingVertical: 30, justifyContent: 'center'
-                      }}
-                      >
-                        <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:14, color: '#0A0A0A', lineHeight: 13.51}}>
-                          Payment Details
-                        </Text>
-                        <Text style={{fontSize: 12, color: '#0A0A0A', fontFamily: 'Inter_400Regular', fontWeight: 400, paddingTop: 16, paddingBottom: 8}}>
-                          Select payment method
-                        </Text>
-
-                        <View style={{gap: 20}}>
-                          <TouchableOpacity
-                          style={[styles.payment, method ===  "card" && styles.activate]}
-                          onPress={() => setMethod(method === 'card' ? null : 'card')}
-                          >
-                            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap:6}}>
-                              <Ionicons name="card-outline" size={20} />
-                              <View>
-                                <Text style={styles.paymentHeader}>Credit/Debit Card</Text>
-                                <Text style={styles.paymentSubText}>Instant confirmation</Text>
-                              </View>
-                            </View>
-
-                            <View style={[styles.check, method === "card" && styles.activeCheck]} />
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={[styles.payment, method ===  "bank" && styles.activate]}
-                            onPress={() => setMethod(method === 'bank' ? null : 'bank')}
-                          >
-                            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap:6}}>
-                              <Ionicons name="cash-outline" size={20} />
-                              <View>
-                                <Text style={styles.paymentHeader}>Bank Transfer</Text>
-                                <Text style={styles.paymentSubText}>Manual verification required</Text>
-                              </View>
-                            </View>
-
-                            <View style={[styles.check, method === "bank" && styles.activeCheck]} />
-                          </TouchableOpacity>
-                        </View>
-
-                        {method === 'card' && (
-                          <View>
-                            <Text style={styles.paymentText}>Card Number</Text>
-                            <TextInput
-                              placeholder="1234 5678 9012 3456"
-                              keyboardType="numeric"
-                              style={styles.input}
-                            />
-
-                            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',}}>
-                              <View>
-                                <Text style={styles.paymentText}>Expiry Date</Text>
-                                <TextInput
-                                  placeholder="MM/YY"
-                                  keyboardType="numeric"
-                                  style={[styles.input, {width: 150}]}
-                                />
-                              </View>
-                              <View>
-                                <Text style={styles.paymentText}>CVV</Text>
-                                <TextInput
-                                  placeholder="123"
-                                  keyboardType="numeric"
-                                  secureTextEntry
-                                  style={[styles.input, {width: 150}]}
-                                />
-                              </View>
-                            </View>
-                          </View>
-                        )}
-
-                        {method === 'bank' && (
-                          <View>
-                            <Text style={styles.paymentText}>Account Name</Text>
-                            <TextInput
-                              placeholder="Olofin Evelyn"
-                              keyboardType="default"
-                              style={styles.input}
-                            />
-
-                            <View>
-                              <Text style={styles.paymentText}>Account Number</Text>
-                              <TextInput
-                                placeholder="1234567890"
-                                keyboardType="numeric"
-                                style={styles.input}
-                              />
-                              <Text style={styles.paymentText}>Bank Name</Text>
-                              <TextInput
-                                placeholder="Bank"
-                                keyboardType="default"
-                                style={styles.input}
-                              />
-                            </View>
-                          </View>
-                        )}
-                      </View> */}
-
                       <View>
                         <View style={{marginVertical: 11.32, backgroundColor: 'white', borderRadius: 11.69,
                           marginHorizontal: 10, paddingVertical: 11.32, justifyContent: 'center', paddingHorizontal: 11.32
@@ -1134,7 +1020,7 @@ if (paystackUrl) {
                           <View style={[styles.info, {paddingTop: 15, borderBottomWidth: 1,borderColor: "#0000001A", borderTopWidth: 1
                               }]}>
                             <Text style={styles.footerLabel}>₦{pricePerHour.toLocaleString()} × {duration} hour</Text>
-                            <Text style={styles.footerText}>₦{Number(boat?.pricePerHour ?? 0).toLocaleString()}</Text>
+                            <Text style={styles.footerText}>₦{totalAmount.toLocaleString()}</Text>
                           </View>
                           <View style={{flexDirection: 'row', justifyContent: 'space-between',alignItems: 'center',paddingTop: 29.06,}}>
                             <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>Total</Text>
@@ -1143,29 +1029,135 @@ if (paystackUrl) {
                         </View>
                     </View>
 
-                    <TouchableOpacity 
-                    onPress={createBooking}
-                      style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding:16, marginHorizontal: 14,
+                    <View style={{marginVertical: 11.32, backgroundColor: 'white', borderRadius: 11.69,
+                          marginHorizontal: 10, paddingVertical: 11.32, justifyContent: 'center', paddingHorizontal: 11.32
+                          }}>
+                      <View>
+                        <Text style={{fontFamily: 'Inter_600SemiBold', fontSize: 16, fontWeight: 600, marginVertical: 10}}>
+                          Complete Payment
+                        </Text>
+                        <Text>You will be redirected to Paystack to complete your payment securely. 
+                          Paystack accepts card payments, bank transfers, and other payment methods.
+                        </Text>
+
+                        <View style={{backgroundColor: '#F0FDF4', flexDirection: 'row', padding:10, alignItems: 'center',
+                          borderRadius: 6,borderColor: "#125526ff", borderWidth: 1, gap:10,marginVertical: 12
+                        }}>
+                          <MaterialIcons name="lock-outline" size={24} color="#125526ff"/>
+                          <Text style={{paddingRight:60}}>
+                            Your payment is secured by Paystack. We never store your card details.
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+
+                    {!paystackUrl && !showSuccess && (
+                      <>
+                      <TouchableOpacity
+                        onPress={createBooking}
+                        style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding: 16, marginHorizontal: 14,
                         marginTop: 20
                       }}
-                    >
-                      <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12, color: 'white', lineHeight: 11.32, textAlign:"center"}}>
-                        Continue
-                      </Text>
-                    </TouchableOpacity>
+                      >
+                         {loading ? (
+                            <ActivityIndicator size="small" color="#fff"/>
+                          ) : (
+                            <Text style={{ color: "white", fontWeight: "bold" }}>Proceed to Payment</Text>
+                          )}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={goBack}
+                        style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding: 16, marginHorizontal: 14,
+                          marginTop: 20
+                        }}
+                      >
+                        <Text style={{ color: "white", fontWeight: "bold" }}>Back</Text>
+                      </TouchableOpacity>
+                      </>
+                    )}
 
-                    <TouchableOpacity onPress={goBack}
-                      style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding: 16, marginBottom: 50, marginHorizontal: 14,
-                        marginTop: 5
-                      }}
-                    >
-                      <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12, color: 'white', lineHeight: 11.32, textAlign:"center"}}>
-                        Back
-                      </Text>
-                    </TouchableOpacity>
+                    {paystackUrl && (
+                      <WebView
+                        source={{ uri: paystackUrl }}
+                        startInLoadingState
+                        javaScriptEnabled
+                        domStorageEnabled
+                        onNavigationStateChange={(nav) => {
+                          if (nav.url.includes("callback") && paymentReference) {
+                            // verifyPayment();
+                          }
+                        }}
+                        style={{ flex: 1 }}
+                      />
+                    )}
+
+                    {showSuccess && 
+                      <Modal isVisible={showSuccess}>
+                      <View style={styles.modalCard}>
+                        <View style={{ alignItems: "center" }}>
+                          <Image source={require('@/assets/images/Clip.png')} width={161.86} height={195.38} />
+                          <Image
+                            source={require('@/assets/images/success-aaIiyEo0wd.png')}
+                            width={143.12}
+                            height={114.5}
+                            style={{ position: 'absolute', bottom: 30, left: 5 }}
+                          />
+                        </View>
+                        <Text style={{ fontSize: 16, fontWeight: "600", fontFamily: 'Inter_600SemiBold', textAlign:'center' }}>
+                          Booking Confirmed
+                        </Text>
+                        <Text style={{ fontSize: 12, fontWeight: "400", fontFamily: 'Inter_400Regular', color: '#4A5565', textAlign:'center' }}>
+                          Your booking has been confirmed and the operator has been notified.
+                        </Text>
+
+                        <View style={{ backgroundColor:'#F7F7F7', paddingHorizontal: 16.47, paddingVertical: 10.29, marginVertical:10, borderRadius:4.12 }}>
+                          <View style={[styles.info, { paddingHorizontal: 8}]}>
+                            <Text style={styles.footerLabel}> Booking ID:</Text>
+                            <Text style={styles.footerText}> {paymentReference} </Text>
+                          </View>
+                          <View style={{borderBottomWidth: 1,borderColor: "#0000001A", paddingHorizontal: 28}}></View>
+                          <View style={[styles.info, {paddingTop: 10}]}>
+                            <Text style={styles.footerLabel}> Duration</Text>
+                            <Text style={styles.footerText}> {duration} hours</Text>
+                          </View>
+                          <View style={styles.info}>
+                            <Text style={styles.footerLabel}> Date</Text>
+                            <Text style={styles.footerText}> {selectedDate}</Text>
+                          </View>
+                          <View style={[styles.info, {borderBottomWidth: 1,borderColor: "#0000001A"}]}>
+                            <Text style={styles.footerLabel}> Time</Text>
+                            <Text>{startTime.toLocaleTimeString([], { hour: "2-digit", hour12: true })} - {endTime.toLocaleTimeString([], { hour: "2-digit", hour12: true })}</Text>
+                          </View>
+                        </View>
+
+                        <Text style={{ textAlign:'center', fontSize: 12, fontWeight: "400", fontFamily: 'Inter_400Regular', color: '#4A5565', marginVertical: 5 }}>
+                          A confirmation email has been sent to your email address with all booking details.
+                        </Text>
+
+                        <TouchableOpacity
+                          onPress={goToBookingDetails}
+                          style={{ backgroundColor: '#1A1A1A', borderRadius: 26.16, padding: 15, marginBottom: 10, marginTop: 20 }}
+                        >
+                          <Text style={{ fontFamily: 'Inter_500Medium', fontWeight: "500", fontSize:12, color: 'white', textAlign:"center" }}>View Booking</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          onPress={() => {
+                            setShowSuccess(false);
+                            router.replace("/(tabs)/HomePage");
+                          }}
+                        >
+                          <Text style={{ textAlign:'center', fontFamily: 'Inter_500Medium', fontWeight: "500", fontSize:12 }}>Go back to Home</Text>
+                        </TouchableOpacity>
                       </View>
+                    </Modal>
+                    }
+                          </View>
+                        </View>
                     </View>}
-
+{/* 
                     <Modal isVisible={showSuccess}>
                       <View style={styles.modalCard}>
                         <View style={{alignItems: "center",}}>
@@ -1193,7 +1185,7 @@ if (paystackUrl) {
                         }}>
                           <View style={[styles.info, { paddingHorizontal: 8}]}>
                           <Text style={styles.footerLabel}> Booking ID:</Text>
-                          <Text style={styles.footerText}> {bookingRef ?? "—"} </Text>
+                          <Text style={styles.footerText}> {paymentReference} </Text>
                           </View>
                           <View style={{borderBottomWidth: 1,borderColor: "#0000001A", paddingHorizontal: 28}}></View>
                           <View style={[styles.info, {paddingTop: 10}]}>
@@ -1240,7 +1232,7 @@ if (paystackUrl) {
                           <Text style={{textAlign:'center', fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12}}>Go back to Home</Text>
                         </TouchableOpacity>
                       </View>
-                    </Modal>
+                    </Modal> */}
                   </View>
               </View>
             </ScrollView>

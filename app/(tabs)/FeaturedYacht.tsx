@@ -221,7 +221,7 @@ const viewDetails = async (boatId: string) => {
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <ScrollView style={{ backgroundColor: "#F8F8F8" }}>
         <View style={styles.navBar}>
-                <View style={{flexDirection:'row', gap: 5, alignItems:'center'}}>
+                <View style={{flexDirection:'row', gap: 5, alignItems:'center', paddingTop: 20}}>
                     <Image
                     source={require('@/assets/images/logo.png')}
                     style={{
@@ -234,7 +234,7 @@ const viewDetails = async (boatId: string) => {
                     </Text>
                 </View>
 
-                <View style={{flexDirection:'row', gap: 5, justifyContent:'space-between', width:64}}>
+                <View style={{flexDirection:'row', gap: 5, justifyContent:'space-between', width:64, paddingTop: 20}}>
                     <TouchableOpacity onPress={() => setOpen(true)}>
                         <Ionicons
                         name="menu"
