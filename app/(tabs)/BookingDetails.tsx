@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { httpClient } from "@/constants/httpClient";
 import {
   ActivityIndicator,
@@ -10,8 +10,14 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Dimensions,
+  Animated,
+  Image
 } from "react-native";
 import Modal from "react-native-modal";
+import { router } from "expo-router";
+import { Ionicons, Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface Booking {
   _id: string;
@@ -25,6 +31,7 @@ interface Booking {
   paymentStatus?: string; 
   paymentReference?: string;
   amount?: number;
+  media: string;
   location?: string;
   refund?: {
     amount: number;
@@ -35,7 +42,36 @@ interface Booking {
 type TabType = "upcoming" | "past";
 type StatusTabType = "all" | "paid" | "pending" | "cancelled";
 
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const PANEL_WIDTH = SCREEN_WIDTH * 0.5;
+const PANEL_HEIGHT = 215;
+const { height } = Dimensions.get("window");
+
 export default function BookingDetails() {
+   const [open, setOpen] = useState (false)
+  
+      const [profile, setProfile] = useState(false);
+      const slideAnim = useRef(new Animated.Value(PANEL_WIDTH)).current;
+      const dropAnim = useRef(new Animated.Value(-PANEL_HEIGHT)).current;
+  
+      const openPanel = () => {
+          setProfile(true);
+          slideAnim.setValue(PANEL_WIDTH);
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }).start();
+        };
+      
+      const closePanel = () => {
+          Animated.timing(slideAnim, {
+            toValue: PANEL_WIDTH,
+            duration: 300,
+            useNativeDriver: true,
+          }).start(() => setProfile(false));
+        };
+
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>("upcoming");
   const [statusTab, setStatusTab] = useState<StatusTabType>("all");
@@ -46,6 +82,32 @@ export default function BookingDetails() {
 
   const now = new Date();
   const ONE_HOUR = 60 * 60 * 1000;
+
+  const handleLogout = async () => {
+  try {
+    console.log("Starting logout...");
+
+    await AsyncStorage.removeItem("token");
+    console.log("Token removed successfully");
+
+    await AsyncStorage.removeItem("user");
+    console.log("User data removed successfully");
+
+    delete httpClient.defaults.headers.common["Authorization"];
+    console.log("Authorization header cleared");
+
+    setProfile(false);
+    console.log("Profile state set to false");
+
+    router.replace("/auth/Login");
+    console.log("Redirected to login page");
+    
+    console.log("Logout completed successfully");
+
+  } catch (error) {
+    console.error("Logout failed", error);
+  }
+};
 
   const getMyBookings = async () => {
     try {
@@ -153,6 +215,109 @@ export default function BookingDetails() {
   return (
     <View style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" />
+      <View style={styles.navBar}>
+        <View style={{flexDirection:'row', gap: 5, alignItems:'center'}}>
+            <Image
+            source={require('@/assets/images/logo.png')}
+            style={{
+                width: 23.32,
+                height: 23.32,
+            }}
+            />
+            <Text style={{color: 'white', fontWeight:700, fontSize: 11.66}}>
+                BoatCruise
+            </Text>
+        </View>
+
+        <View style={{flexDirection:'row', gap: 5, justifyContent:'space-between', width:64}}>
+          <TouchableOpacity onPress={() => setOpen(true)}>
+              <Ionicons
+              name="menu"
+              size={24}
+              color='white'
+              />
+              <Modal isVisible={open} onBackdropPress={() => setOpen(false)}>
+                  <View style={{ backgroundColor: "black", padding: 20, borderRadius: 10 }}>
+                  <TouchableOpacity
+                  onPress={() => router.navigate('/(tabs)/HomePage')}
+                  >
+                      <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>Home</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity>
+                      <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => router.navigate('/(tabs)/BookingDetails')}
+                  >
+                      <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
+                        My bookings
+                      </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity onPress={() => setOpen(false)}>
+                      <Text style={{ color: "red", fontSize: 16, fontFamily: 'Inter_700Bold' }}>Cancel</Text>
+                  </TouchableOpacity>
+                  </View>
+              </Modal>
+
+            </TouchableOpacity>
+
+            <View>
+              <TouchableOpacity
+                onPress={openPanel}
+                style={{width: 24, height: 24, borderRadius: 60, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'white'}}
+              >
+                  <Feather
+                  name="user"
+                  size={16}
+                  color='white'
+                  />
+              </TouchableOpacity>
+
+              {profile && (
+                <View
+                  style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 40,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: 'rgba(0,0,0,0.3)',
+                  zIndex: 9,
+                }}
+                >
+                  <Animated.View
+                    style={[
+                      styles.panel,
+                      { transform: [{ translateX: slideAnim }] },
+                    ]}
+                  >
+                    <Text style={{fontSize: 18, fontWeight: "bold", marginBottom: 20,}}>User Profile</Text>
+                    {/* <Text style={{fontSize: 16, marginVertical: 10,}}>{user.email}</Text> */}
+                    <TouchableOpacity>
+                      <Text style={{fontSize: 16, marginVertical: 10,}}>Settings</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity>
+                      <Text style={{fontSize: 16, marginVertical: 10,}}>Change Number</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity>
+                      <Text style={{fontSize: 16, marginVertical: 10,}}>Change Password</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleLogout}
+                    >
+                      <Text style={{fontSize: 16, marginVertical: 10,}}>Logout</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={closePanel}>
+                      <Text style={{marginTop: 30, color: "red", fontWeight: "bold",}}>Close</Text>
+                    </TouchableOpacity>
+                  </Animated.View>
+                </View>
+              )}
+            </View>
+        </View>
+      </View>
       <Text style={styles.headerTitle}>My Bookings</Text>
 
       <View style={styles.tabsContainer}>
@@ -182,6 +347,12 @@ export default function BookingDetails() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* <View>
+        <Image
+          source={currentBooking?.media}
+        />
+      </View> */}
 
       {loadingBookings && myBookings.length === 0 ? (
         <ActivityIndicator size="large" />
@@ -292,11 +463,37 @@ const styles = StyleSheet.create({
     flex: 1, 
     backgroundColor: "#F8F8F8" 
   },
+
+  navBar:{
+    backgroundColor:'#1A1A1A',
+    height: 70,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+
+  panel: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    width: PANEL_WIDTH,
+    backgroundColor: "#fff",
+    padding: 20,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    borderBottomLeftRadius:7,
+    borderTopLeftRadius:7
+  },
+
   headerTitle: {
     fontSize: 22, 
     fontWeight: "700", 
     padding: 16 
   },
+
   tabsContainer: {
     flexDirection: "row", 
     backgroundColor: "#EFEFEF", 
@@ -304,46 +501,60 @@ const styles = StyleSheet.create({
     borderRadius: 24, 
     padding: 4 
   },
+
   tab: { 
     flex: 1, 
     paddingVertical: 10, 
     alignItems: "center", 
     borderRadius: 20 
   },
+
   activeTab: { 
     backgroundColor: "#FFF" 
   },
+
   tabText: { 
     color: "#777", 
     fontWeight: "600" 
   },
+
   activeTabText: { 
     color: "#000" 
   },
+
   statusTabsContainer: { 
     flexDirection: "row", 
-    marginHorizontal: 16, 
+    marginHorizontal: 10, 
     marginTop: 8, 
     marginBottom: 16 
   },
+
   statusTab: { 
     flex: 1, 
-    paddingVertical: 6, 
-    marginHorizontal: 4, 
+    marginHorizontal: 3, 
     borderRadius: 12, 
     backgroundColor: "#EEE", 
-    alignItems: "center" 
+    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
   },
+
   activeStatusTab: { 
-    backgroundColor: "#000" 
+    backgroundColor: "#000",
+    paddingHorizontal: 3, 
+    paddingVertical: 9, 
   },
+
   statusTabText: { 
     color: "#555", 
-    fontWeight: "600" 
+    fontWeight: "600",
+    fontSize: 12
   },
+
   activeStatusTabText: { 
-    color: "#FFF" 
+    color: "#FFF"
   },
+
   bookingCard: { 
     backgroundColor: "#FFF", 
     borderRadius: 16, 
@@ -351,15 +562,18 @@ const styles = StyleSheet.create({
     marginBottom: 16, 
     elevation: 3 
   },
+
   occasion: { 
     fontSize: 16, 
     fontWeight: "700" 
   },
+
   actions: { 
     flexDirection: "row", 
     marginTop: 12, 
     gap: 8 
   },
+
   viewBtn: { 
     flex: 1, 
     backgroundColor: "#000", 
@@ -367,9 +581,11 @@ const styles = StyleSheet.create({
     borderRadius: 8, 
     alignItems: "center" 
   },
+
   viewBtnText: { 
     color: "#FFF" 
   },
+
   cancelBtn: { 
     flex: 1, 
     backgroundColor: "#FFE5E5", 
@@ -377,27 +593,33 @@ const styles = StyleSheet.create({
     borderRadius: 8, 
     alignItems: "center" 
   },
+
   cancelText: { 
     color: "red" 
   },
+
   emptyContainer: { 
     flex: 1, 
     justifyContent: "center", 
     alignItems: "center" 
   },
+
   emptyText: { 
     color: "#666" 
   },
+
   modalContainer: { 
     backgroundColor: "#FFF", 
     borderRadius: 12, 
     padding: 20 
   },
+
   modalTitle: { 
     fontSize: 18, 
     fontWeight: "700", 
     marginBottom: 12 
   },
+
   modalClose: { 
     marginTop: 20, 
     alignSelf: "flex-end"

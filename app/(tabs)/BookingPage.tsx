@@ -21,6 +21,7 @@ import { Calendar } from "react-native-calendars";
 import Modal from "react-native-modal";
 import { WebView } from "react-native-webview";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as WebBrowser from 'expo-web-browser';
 
 type UserParams ={
   email?: string,
@@ -269,18 +270,30 @@ export default function BookingPage(){
 
 const handleLogout = async () => {
   try {
+    console.log("Starting logout...");
+
     await AsyncStorage.removeItem("token");
+    console.log("Token removed successfully");
+
     await AsyncStorage.removeItem("user");
+    console.log("User data removed successfully");
 
     delete httpClient.defaults.headers.common["Authorization"];
+    console.log("Authorization header cleared");
 
     setProfile(false);
+    console.log("Profile state set to false");
 
     router.replace("/auth/Login");
+    console.log("Redirected to login page");
+    
+    console.log("Logout completed successfully");
+
   } catch (error) {
     console.error("Logout failed", error);
   }
 };
+
 
 
 const mainBoatImage = useMemo(() => {
@@ -291,8 +304,8 @@ const mainBoatImage = useMemo(() => {
 }, [boat]);
 
 
-
 const createBooking = async () => {
+
   if (!selectedDate) return Alert.alert("Error", "Select a date");
   if (endTime <= startTime) return Alert.alert("Error", "End time must be after start time");
   if (!guest) return Alert.alert("Error", "Select Guest");
@@ -308,60 +321,45 @@ const createBooking = async () => {
       numberOfGuest: guest,
       occasion,
       specialRequest,
-    });
+    }
+  );
 
     console.log("Booking initialized:", res.data);
 
     const responseData = res.data?.data || res.data;
-    
     if (!responseData) {
-      console.error("Invalid response structure:", res.data);
       Alert.alert("Error", "Invalid response from server");
       return;
     }
 
-    const paymentReference = responseData.paymentReference 
-      || responseData.reference 
-      || responseData.payment_reference;
+    const paymentReference =
+      responseData.paymentReference || responseData.reference || responseData.payment_reference;
     
-    const paystackLink = responseData.paymentUrl         
-      || responseData.authorization_url 
-      || responseData.authorizationUrl
-      || responseData.payment_url;
+    const paystackLink =
+      responseData.paymentUrl || responseData.authorization_url || responseData.authorizationUrl || responseData.payment_url;
 
-    if (!paystackLink) {
-      console.error("Missing payment URL. Available fields:", Object.keys(responseData));
-      Alert.alert("Error", "Payment link not received from server");
-      return;
-    }
-
-    if (!paymentReference) {
-      console.error("Missing payment reference. Available fields:", Object.keys(responseData));
-      Alert.alert("Error", "Payment reference not generated");
+    if (!paystackLink || !paymentReference) {
+      Alert.alert("Error", "Payment could not be initialized");
       return;
     }
 
     setPaymentReference(paymentReference);
     setPaystackUrl(paystackLink);
-    setShowSuccess(true)
 
-    console.log("Payment initialized successfully:", {
-      reference: paymentReference,
-      url: paystackLink
-    });
+    await WebBrowser.openBrowserAsync(paystackLink);
+
+    setShowSuccess(true);
+
+    console.log("Payment initialized successfully:", { reference: paymentReference, url: paystackLink });
 
   } catch (err: any) {
     console.error("Booking error:", err);
-    
-    const errorMessage = err.response?.data?.message 
-      || err.message 
-      || "Booking failed. Please try again.";
-    
-    Alert.alert("Error", errorMessage);
+    Alert.alert("Error", err.response?.data?.message || err.message || "Booking failed. Please try again.");
   } finally {
     setLoading(false);
   }
 };
+
 
     return(
         <>
@@ -1064,16 +1062,20 @@ const createBooking = async () => {
                          {loading ? (
                             <ActivityIndicator size="small" color="#fff"/>
                           ) : (
-                            <Text style={{ color: "white", fontWeight: "bold" }}>Proceed to Payment</Text>
+                            <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12, color: 'white', textAlign:"center"}}>
+                              Proceed to Payment
+                            </Text>
                           )}
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={goBack}
-                        style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding: 16, marginHorizontal: 14,
-                          marginTop: 20
-                        }}
+                        style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding: 16, marginBottom: 50, marginHorizontal: 14,
+                        marginTop: 10
+                      }}
                       >
-                        <Text style={{ color: "white", fontWeight: "bold" }}>Back</Text>
+                        <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12, color: 'white', lineHeight: 11.32, textAlign:"center"}}>
+                          Back
+                        </Text>
                       </TouchableOpacity>
                       </>
                     )}
@@ -1466,4 +1468,3 @@ const styles= StyleSheet.create({
     paddingHorizontal: 16,
   },
 })
-

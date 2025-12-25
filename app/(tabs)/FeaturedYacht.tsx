@@ -15,6 +15,7 @@ import { Ionicons, Feather } from "@expo/vector-icons";
 import Modal from "react-native-modal";
 import { router } from "expo-router";
 import { httpClient } from "@/constants/httpClient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const PANEL_WIDTH = SCREEN_WIDTH * 0.4;
@@ -144,6 +145,32 @@ const [open, setOpen] = useState (false)
       options: ["Low to High", "High to Low"],
     },
   ];
+
+  const handleLogout = async () => {
+  try {
+    console.log("Starting logout...");
+
+    await AsyncStorage.removeItem("token");
+    console.log("Token removed successfully");
+
+    await AsyncStorage.removeItem("user");
+    console.log("User data removed successfully");
+
+    delete httpClient.defaults.headers.common["Authorization"];
+    console.log("Authorization header cleared");
+
+    setProfile(false);
+    console.log("Profile state set to false");
+
+    router.replace("/auth/Login");
+    console.log("Redirected to login page");
+    
+    console.log("Logout completed successfully");
+
+  } catch (error) {
+    console.error("Logout failed", error);
+  }
+};
 
   const filteredBoats = useMemo(() => {
       let result = [...boats];
@@ -302,7 +329,9 @@ const viewDetails = async (boatId: string) => {
                                 <TouchableOpacity>
                                   <Text style={{fontSize: 16, marginVertical: 10,}}>Settings</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity>
+                                <TouchableOpacity
+                                  onPress={handleLogout}
+                                >
                                   <Text style={{fontSize: 16, marginVertical: 10,}}>Logout</Text>
                                 </TouchableOpacity>
 

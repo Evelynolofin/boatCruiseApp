@@ -69,6 +69,7 @@ export default function homepage(){
     const [error, setError] = useState<string | null>(null);
 
     const availableBoats = boats.filter(boat => boat.pricePerHour > 0);
+    const boatsToDisplay = availableBoats?.slice(0, 6) || [];
 
 
     useEffect(() => {
@@ -195,7 +196,8 @@ if (!fontsLoaded){
         </View>
 
         <View style={styles.yacht}>
-                {availableBoats.map((b) => (
+            <>
+                {availableBoats.slice(0,6).map((b) => (
                     <View key={b._id} style={{backgroundColor: 'white', borderRadius: 4, paddingHorizontal: 5.5, 
                         paddingVertical: 10,}}
                     >
@@ -206,7 +208,6 @@ if (!fontsLoaded){
                             resizeMode="cover"
                         />
                         )}
-
 
 
                         <Text style={{fontWeight: 500, fontSize: 12, fontFamily: 'Inter_500Medium', marginTop:8}}>{b.boatName}</Text>
@@ -238,6 +239,7 @@ if (!fontsLoaded){
                     ))}
                 
             {availableBoats.length === 0}
+            </>
         </View>
 
         <TouchableOpacity style={{flexDirection:'row',width: 113, height: 48,gap:8, paddingVertical: 12, paddingHorizontal: 20,}}
