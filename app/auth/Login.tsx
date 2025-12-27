@@ -1,6 +1,7 @@
 import {httpClient} from "@/constants/httpClient";
 import {saveToken} from "@/constants/tokenFile";
 import {Ionicons} from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import {router} from "expo-router";
 import {useRef, useState} from "react";
@@ -59,6 +60,16 @@ export default function login() {
       if (token) {
         await saveToken(token);
       }
+
+        const user = res.data.data.user;
+              if (user) {
+                await AsyncStorage.setItem("userName", user.full_name || "");
+                await AsyncStorage.setItem("userEmail", user.email || "");
+                await AsyncStorage.setItem("userPhone", user.phoneNumber || "");
+              }
+              console.log("userEmail:", user?.email);
+              console.log("userName:", user?.fullName);
+              console.log("userPhone:", user?.phoneNumber);
 
       console.log("LOGIN SUCCESS:", res.data);
 

@@ -209,16 +209,13 @@ export default function YachtDetails() {
                         { transform: [{ translateX: slideAnim }] },
                       ]}
                     >
-                      <Text style={{fontSize: 18, fontWeight: "bold", marginBottom: 20,}}>User Profile</Text>
-                      {/* <Text style={{fontSize: 16, marginVertical: 10,}}>{user.email}</Text> */}
+                      <Text style={{fontSize: 16, marginBottom: 10}}
+                        onPress={() => router.navigate("/(tabs)/UserProfile")}
+                      >
+                        Profile
+                      </Text>
                       <TouchableOpacity>
                         <Text style={{fontSize: 16, marginVertical: 10,}}>Settings</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity>
-                        {/* <Text style={{fontSize: 16, marginVertical: 10,}}>Change Number</Text> */}
-                      </TouchableOpacity>
-                      <TouchableOpacity>
-                        {/* <Text style={{fontSize: 16, marginVertical: 10,}}>Change Password</Text> */}
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={handleLogout}

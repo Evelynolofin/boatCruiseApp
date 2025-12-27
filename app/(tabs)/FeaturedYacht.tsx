@@ -324,8 +324,15 @@ const viewDetails = async (boatId: string) => {
                               { transform: [{ translateX: slideAnim }] },
                             ]}
                             >
-                                <Text style={{fontSize: 18, fontWeight: "bold", marginBottom: 20,}}>User Profile</Text>
+                                {/* <Text style={{fontSize: 18, fontWeight: "bold", marginBottom: 20,}}>User Profile</Text> */}
                                 {/* <Text style={{fontSize: 16, marginVertical: 10,}}>{email || "Guest User"}</Text> */}
+                                <TouchableOpacity
+                                  onPress={() => router.navigate("/(tabs)/UserProfile")}
+                                >
+                                  <Text style={{fontSize: 16, marginVertical: 10,}}>
+                                    Profile
+                                  </Text>
+                                </TouchableOpacity>
                                 <TouchableOpacity>
                                   <Text style={{fontSize: 16, marginVertical: 10,}}>Settings</Text>
                                 </TouchableOpacity>

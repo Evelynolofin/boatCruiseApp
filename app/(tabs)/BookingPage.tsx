@@ -303,9 +303,42 @@ const mainBoatImage = useMemo(() => {
   return null;
 }, [boat]);
 
+useEffect(() => {
+    const loadUserInfo = async () => {
+      try {
+        const savedEmail = await AsyncStorage.getItem("userEmail");
+        const savedFullName = await AsyncStorage.getItem("userName");
+        const savedPhone = await AsyncStorage.getItem("userPhone");
+
+        if (savedEmail) setEmail(savedEmail);
+        if (savedFullName) setFullName(savedFullName);
+        if (savedPhone) setPhone(savedPhone);
+      } catch (err) {
+        console.log("Error loading user info:", err);
+      }
+    };
+    loadUserInfo();
+  }, []);
+
 
 const createBooking = async () => {
+  // const token = await AsyncStorage.getItem("token");
 
+  // if (!token) {
+  //   Alert.alert(
+  //     "Login required",
+  //     "You must be logged in to make a booking.",
+  //     [
+  //       {
+  //         text: "Go to Login",
+  //         onPress: () => router.push("/auth/Login"),
+  //       },
+  //       { text: "Cancel", style: "cancel" },
+  //     ]
+  //   );
+  //   return;
+  // }
+  
   if (!selectedDate) return Alert.alert("Error", "Select a date");
   if (endTime <= startTime) return Alert.alert("Error", "End time must be after start time");
   if (!guest) return Alert.alert("Error", "Select Guest");
@@ -442,16 +475,14 @@ const createBooking = async () => {
                                   { transform: [{ translateX: slideAnim }] },
                                 ]}
                               >
-                                <Text style={{fontSize: 18, fontWeight: "bold", marginBottom: 20,}}>User Profile</Text>
+                                <Text style={{fontSize: 16, marginBottom: 10,}}
+                                  onPress={() => router.navigate("/(tabs)/UserProfile")}
+                                >
+                                  Profile
+                                </Text>
                                 {/* <Text style={{fontSize: 16, marginVertical: 10,}}>{user.email}</Text> */}
                                 <TouchableOpacity>
                                   <Text style={{fontSize: 16, marginVertical: 10,}}>Settings</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity>
-                                  <Text style={{fontSize: 16, marginVertical: 10,}}>Change Number</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity>
-                                  <Text style={{fontSize: 16, marginVertical: 10,}}>Change Password</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                   onPress={handleLogout}
@@ -554,6 +585,7 @@ const createBooking = async () => {
                       placeholder="Enter your full name"
                       placeholderTextColor='#787878'
                       style={styles.input}
+                      // value={fullName}
                       onChangeText={setFullName}
                       returnKeyType="next"
                       onSubmitEditing={() => emailRef.current ?.focus()}
@@ -565,10 +597,9 @@ const createBooking = async () => {
                       placeholderTextColor='#787878'
                       keyboardType="email-address"
                       style={styles.input}
-                      onChangeText={setEmail}
+                      value={email}
+                      editable={false}
                       returnKeyType="next"
-                      ref={emailRef}
-                      onSubmitEditing={() => phoneRef.current ?.focus()}
                       />
                       <Text style={styles.label}>Phone Number</Text>
                       <TextInput
@@ -576,7 +607,8 @@ const createBooking = async () => {
                       placeholderTextColor='#787878'
                       keyboardType="phone-pad"
                       style={styles.input}
-                      onChangeText={setPhone}
+                      value={phone}
+                      editable={false}
                       returnKeyType="next"
                       ref={phoneRef}
                       />
@@ -743,7 +775,7 @@ const createBooking = async () => {
                       <View>
                         <View style={styles.info}>
                           <Text style={styles.footerLabel}> Full name</Text>
-                          <Text style={styles.footerText}> {userEmail}</Text>
+                          <Text style={styles.footerText}> {fullName}</Text>
                         </View>
                         <View style={styles.info}>
                           <Text style={styles.footerLabel}> Email address</Text>
@@ -818,14 +850,14 @@ const createBooking = async () => {
 
                           if (num < 1) {
                             setGuest(0);
-                          } else if (num > 20) {
-                            setGuest(20);
+                          } else if (num > 40) {
+                            setGuest(40);
                           } else {
                             setGuest(num);
                           }
                         }}
                       />
-                        <Text style={{fontSize: 10, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>Maximum capacity: 20</Text>
+                        <Text style={{fontSize: 10, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>Maximum capacity: 40</Text>
 
                         <Text style={styles.label}>Occasion</Text>
 
