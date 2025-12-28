@@ -164,7 +164,7 @@ export default function YachtDetails() {
                           <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        onPress={() => router.navigate('/(tabs)/BookingDetails')}
+                        onPress={() => router.navigate('/(tabs)/MyBookings')}
                       >
                           <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
                             My bookings

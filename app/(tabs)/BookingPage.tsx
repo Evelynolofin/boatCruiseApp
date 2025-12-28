@@ -22,6 +22,8 @@ import Modal from "react-native-modal";
 import { WebView } from "react-native-webview";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as WebBrowser from 'expo-web-browser';
+import { getToken, removeToken } from "@/constants/tokenFile";
+import axios from "axios";
 
 type UserParams ={
   email?: string,
@@ -98,10 +100,6 @@ export default function BookingPage(){
           useNativeDriver: true,
         }).start(() => setProfile(false));
       };
-
-    // const user ={
-    //   email: params.email ?? "",
-    // }
 
     const [step, setStep] = useState(1)
 
@@ -246,7 +244,7 @@ export default function BookingPage(){
 
     let boatName: string = boat?.boatName || "Unknown Boat";    
     
-    const goToBookingDetails = () => {
+    const goToMyBookings = () => {
     router.push({
       pathname: "/(tabs)/BookingDetails",
         params: {
@@ -260,8 +258,7 @@ export default function BookingPage(){
         guest: guest.toString(),
         occasion: occasion,
         total: totalAmount.toString(),
-        paymentReference,      
-        // location: location?.name,
+        paymentReference,
         boatName,
  
       },
@@ -272,7 +269,7 @@ const handleLogout = async () => {
   try {
     console.log("Starting logout...");
 
-    await AsyncStorage.removeItem("token");
+    await removeToken();
     console.log("Token removed successfully");
 
     await AsyncStorage.removeItem("user");
@@ -320,24 +317,22 @@ useEffect(() => {
     loadUserInfo();
   }, []);
 
-
 const createBooking = async () => {
-  // const token = await AsyncStorage.getItem("token");
-
-  // if (!token) {
-  //   Alert.alert(
-  //     "Login required",
-  //     "You must be logged in to make a booking.",
-  //     [
-  //       {
-  //         text: "Go to Login",
-  //         onPress: () => router.push("/auth/Login"),
-  //       },
-  //       { text: "Cancel", style: "cancel" },
-  //     ]
-  //   );
-  //   return;
-  // }
+  const token = await getToken();
+  if (!token) {
+    Alert.alert(
+      "Login required",
+      "You must be logged in to make a booking.",
+      [
+        {
+          text: "Go to Login",
+          onPress: () => router.push("/auth/Login"),
+        },
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
+    return;
+  }
   
   if (!selectedDate) return Alert.alert("Error", "Select a date");
   if (endTime <= startTime) return Alert.alert("Error", "End time must be after start time");
@@ -354,8 +349,7 @@ const createBooking = async () => {
       numberOfGuest: guest,
       occasion,
       specialRequest,
-    }
-  );
+    });
 
     console.log("Booking initialized:", res.data);
 
@@ -379,11 +373,15 @@ const createBooking = async () => {
     setPaymentReference(paymentReference);
     setPaystackUrl(paystackLink);
 
-    await WebBrowser.openBrowserAsync(paystackLink);
+    const browserResult = await WebBrowser.openBrowserAsync(paystackLink);
 
-    setShowSuccess(true);
+    setShowSuccess(true)
 
-    console.log("Payment initialized successfully:", { reference: paymentReference, url: paystackLink });
+    console.log("Browser result:", browserResult);
+
+    if (browserResult.type === 'dismiss' || browserResult.type === 'cancel') {
+      await verifyPayment(paymentReference);
+    }
 
   } catch (err: any) {
     console.error("Booking error:", err);
@@ -393,883 +391,846 @@ const createBooking = async () => {
   }
 };
 
+const verifyPayment = async (reference: string) => {
+  const token = await getToken();
+  console.log({token})
+  try {
+    const verifyRes = await axios.get(
+      `https://internsproject.vercel.app/api/bookings/verify/${reference}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const verificationData = verifyRes.data?.data;
+
+    if (
+      verificationData?.status === "success" ||
+      verificationData?.paymentStatus === "paid"
+    ) {
+
+      Alert.alert(
+        "Success",
+        "Payment verified! Your booking is confirmed.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.push("/(tabs)/BookingDetails"),
+          },
+        ]
+      );
+    } 
+
+  } catch (err: any) {
+    console.error("Verification error:", err);
+    Alert.alert(
+      "Verification Error",
+      err.response?.data?.message || "Could not verify payment."
+    );
+  }
+};
+
+
 
     return(
         <>
-            <ScrollView style={{backgroundColor: '#F8F8F8'}}>
-              <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-                <View style={styles.navBar}>
-                    <View style={{flexDirection:'row', gap: 5, alignItems:'center'}}>
-                        <Image
-                        source={require('@/assets/images/logo.png')}
-                        style={{
-                            width: 23.32,
-                            height: 23.32,
-                        }}
-                        />
-                        <Text style={{color: 'white', fontWeight:700, fontSize: 11.66}}>
-                            BoatCruise
-                        </Text>
-                    </View>
-    
-                    <View style={{flexDirection:'row', gap: 5, justifyContent:'space-between', width:64}}>
-                        <TouchableOpacity onPress={() => setOpen(true)}>
-                            <Ionicons
-                            name="menu"
-                            size={24}
-                            color='white'
-                            />
-                            <Modal isVisible={open} onBackdropPress={() => setOpen(false)}>
-                                <View style={{ backgroundColor: "black", padding: 20, borderRadius: 10 }}>
-                                <TouchableOpacity
-                                onPress={() => router.navigate('/(tabs)/HomePage')}
-                                >
-                                    <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>Home</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity>
-                                    <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                  onPress={() => router.navigate('/(tabs)/BookingDetails')}
-                                >
-                                    <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
-                                      My bookings
-                                    </Text>
-                                </TouchableOpacity>
-    
-                                <TouchableOpacity onPress={() => setOpen(false)}>
-                                    <Text style={{ color: "red", fontSize: 16, fontFamily: 'Inter_700Bold' }}>Cancel</Text>
-                                </TouchableOpacity>
-                                </View>
-                            </Modal>
-    
+      <ScrollView style={{backgroundColor: '#F8F8F8'}}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <View style={styles.navBar}>
+            <View style={{flexDirection:'row', gap: 5, alignItems:'center'}}>
+                <Image
+                source={require('@/assets/images/logo.png')}
+                style={{
+                    width: 23.32,
+                    height: 23.32,
+                }}
+                />
+                <Text style={{color: 'white', fontWeight:700, fontSize: 11.66}}>
+                    BoatCruise
+                </Text>
+            </View>
+
+            <View style={{flexDirection:'row', gap: 5, justifyContent:'space-between', width:64}}>
+                <TouchableOpacity onPress={() => setOpen(true)}>
+                    <Ionicons
+                    name="menu"
+                    size={24}
+                    color='white'
+                    />
+                    <Modal isVisible={open} onBackdropPress={() => setOpen(false)}>
+                        <View style={{ backgroundColor: "black", padding: 20, borderRadius: 10 }}>
+                        <TouchableOpacity
+                        onPress={() => router.navigate('/(tabs)/HomePage')}
+                        >
+                            <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>Home</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity>
+                            <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => router.navigate('/(tabs)/MyBookings')}
+                        >
+                            <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
+                              My bookings
+                            </Text>
                         </TouchableOpacity>
 
-                        <View>
-                          <TouchableOpacity
-                            onPress={openPanel}
-                            style={{width: 24, height: 24, borderRadius: 60, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'white'}}
-                          >
-                              <Feather
-                              name="user"
-                              size={16}
-                              color='white'
-                              />
-                          </TouchableOpacity>
-
-                          {profile && (
-                            <View
-                              style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 40,
-                              right: 0,
-                              bottom: 0,
-                              backgroundColor: 'rgba(0,0,0,0.3)',
-                              zIndex: 9,
-                            }}
-                            >
-                              <Animated.View
-                                style={[
-                                  styles.panel,
-                                  { transform: [{ translateX: slideAnim }] },
-                                ]}
-                              >
-                                <Text style={{fontSize: 16, marginBottom: 10,}}
-                                  onPress={() => router.navigate("/(tabs)/UserProfile")}
-                                >
-                                  Profile
-                                </Text>
-                                {/* <Text style={{fontSize: 16, marginVertical: 10,}}>{user.email}</Text> */}
-                                <TouchableOpacity>
-                                  <Text style={{fontSize: 16, marginVertical: 10,}}>Settings</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                  onPress={handleLogout}
-                                >
-                                  <Text style={{fontSize: 16, marginVertical: 10,}}>Logout</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity onPress={closePanel}>
-                                  <Text style={{marginTop: 30, color: "red", fontWeight: "bold",}}>Close</Text>
-                                </TouchableOpacity>
-                              </Animated.View>
-                            </View>
-                          )}
+                        <TouchableOpacity onPress={() => setOpen(false)}>
+                            <Text style={{ color: "red", fontSize: 16, fontFamily: 'Inter_700Bold' }}>Cancel</Text>
+                        </TouchableOpacity>
                         </View>
-                    </View>
-                  </View>
-    
-                <View style={{paddingHorizontal: 10, paddingVertical: 20}}>
-                    <TouchableOpacity 
-                        style={{flexDirection: 'row', gap: 2, alignItems:'center'}}
-                        
-                        // onPress={() =>
-                        //   router.push({
-                        //     pathname:'/(tabs)/YachtDetails',
-                        //     params:{ boatId: BOAT_ID },
-                        //   })
-                        // }
-                        onPress={() => router.navigate('/(tabs)/FeaturedYacht')}
-                    >
-                        <Ionicons
-                        name="arrow-back"
-                        size={18}
-                        color='#292D329E'
-                        />
-                        <Text style={{fontWeight:400, fontSize:14, color: '#292D329E'}}>Go back</Text>
-                    </TouchableOpacity>
-                </View>
+                    </Modal>
 
+                </TouchableOpacity>
 
                 <View>
-                    <Text style={{fontFamily: 'Inter_400Regular', fontWeight: 700, fontSize:12, color: '#0A0A0A', lineHeight: 13.58,
-                        paddingHorizontal: 14, paddingVertical: 6.79,
-                    }}>
-                        Complete Your Booking
-                    </Text>
+                  <TouchableOpacity
+                    onPress={openPanel}
+                    style={{width: 24, height: 24, borderRadius: 60, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'white'}}
+                  >
+                      <Feather
+                      name="user"
+                      size={16}
+                      color='white'
+                      />
+                  </TouchableOpacity>
 
-                  <View style={{flexDirection:"row", alignItems: "center",justifyContent: "space-between"}}>
-                  <View style={styles.stepBox}>
+                  {profile && (
                     <View
-                    style={[
-                    styles.circle,
-                    step === 1 ? styles.activeCircle : styles.inactiveCircle
-                    ]}
+                      style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 40,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: 'rgba(0,0,0,0.3)',
+                      zIndex: 9,
+                    }}
                     >
-                    <Text style={step === 1 ? styles.activeNumber : styles.inactiveNumber}> 1 </Text>
+                      <Animated.View
+                        style={[
+                          styles.panel,
+                          { transform: [{ translateX: slideAnim }] },
+                        ]}
+                      >
+                        <Text style={{fontSize: 16, marginBottom: 10,}}
+                          onPress={() => router.navigate("/(tabs)/UserProfile")}
+                        >
+                          Profile
+                        </Text>
+                        <TouchableOpacity>
+                          <Text style={{fontSize: 16, marginVertical: 10,}}>Settings</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={handleLogout}
+                        >
+                          <Text style={{fontSize: 16, marginVertical: 10,}}>Logout</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={closePanel}>
+                          <Text style={{marginTop: 30, color: "red", fontWeight: "bold",}}>Close</Text>
+                        </TouchableOpacity>
+                      </Animated.View>
                     </View>
-                    <Text style={step === 1 ? styles.activeLabel : styles. inactiveLabel}>
-                                Date & Time
+                  )}
+                </View>
+            </View>
+          </View>
+
+        <View style={{paddingHorizontal: 10, paddingVertical: 20}}>
+            <TouchableOpacity 
+                style={{flexDirection: 'row', gap: 2, alignItems:'center'}}
+                onPress={() => router.navigate('/(tabs)/FeaturedYacht')}
+            >
+                <Ionicons
+                name="arrow-back"
+                size={18}
+                color='#292D329E'
+                />
+                <Text style={{fontWeight:400, fontSize:14, color: '#292D329E'}}>Go back</Text>
+            </TouchableOpacity>
+        </View>
+
+
+        <View>
+            <Text style={{fontFamily: 'Inter_400Regular', fontWeight: 700, fontSize:12, color: '#0A0A0A', lineHeight: 13.58,
+                paddingHorizontal: 14, paddingVertical: 6.79,
+            }}>
+                Complete Your Booking
+            </Text>
+
+          <View style={{flexDirection:"row", alignItems: "center",justifyContent: "space-between"}}>
+          <View style={styles.stepBox}>
+            <View
+            style={[
+            styles.circle,
+            step === 1 ? styles.activeCircle : styles.inactiveCircle
+            ]}
+            >
+            <Text style={step === 1 ? styles.activeNumber : styles.inactiveNumber}> 1 </Text>
+            </View>
+            <Text style={step === 1 ? styles.activeLabel : styles. inactiveLabel}>
+                        Date & Time
+            </Text>
+          </View>
+
+          <View style={[styles.line, step >= 2 && styles.activeLine]} />
+
+          <View style={styles.stepBox}>
+            <View
+            style={[
+            styles.circle,
+            step === 2 ? styles.activeCircle :styles.inactiveCircle
+            ]}
+            >
+            <Text style={step === 2 ? styles.activeNumber : styles.inactiveNumber}> 2 </Text>
+            </View>
+            <Text style={[step === 2 ? styles.activeLabel : styles. inactiveLabel]}>
+                      Trip Details
+            </Text>
+          </View>
+
+          <View style={[styles.line, step >= 3 && styles.activeLine]} />
+
+          <View style={styles.stepBox}>
+            <View
+            style={[
+            styles.circle,
+            step === 3 ? styles.activeCircle : styles.inactiveCircle
+            ]}
+            >
+            <Text style={step === 3 ? styles.activeNumber : styles.inactiveNumber}> 3 </Text>
+            </View>
+            <Text style={step === 3 ? styles.activeLabel : styles. inactiveLabel}>
+                      Payment
+            </Text>
+          </View>
+        </View>
+
+      <View>
+        {step ===1 && <View>
+            <View style={styles.form}>
+              <Text style={styles.label}> Full Name </Text>
+              <TextInput
+              placeholder="Enter your full name"
+              placeholderTextColor='#787878'
+              style={styles.input}
+              // value={fullName}
+              onChangeText={setFullName}
+              returnKeyType="next"
+              onSubmitEditing={() => emailRef.current ?.focus()}
+              />
+              <Text style={styles.label}>Email address</Text>
+              <TextInput
+              
+              placeholder="example@gmail.com"
+              placeholderTextColor='#787878'
+              keyboardType="email-address"
+              style={styles.input}
+              value={email}
+              editable={false}
+              returnKeyType="next"
+              />
+              <Text style={styles.label}>Phone Number</Text>
+              <TextInput
+              placeholder="Enter your phone number"
+              placeholderTextColor='#787878'
+              keyboardType="phone-pad"
+              style={styles.input}
+              value={phone}
+              editable={false}
+              returnKeyType="next"
+              ref={phoneRef}
+              />
+              <Text style={styles.label}>Date & Time</Text>
+              <TouchableOpacity onPress={openCalendar}
+                style={styles.input}
+              >
+                <Text>
+                  Select Date
+                </Text>
+              </TouchableOpacity>
+
+              {calendarOpen && (
+                <>
+                  <TouchableOpacity onPress={closeCalendar}>
+                  <Animated.View
+                    style={{transform: [{ translateY: slideAnim }]}}
+                  >
+                    <Calendar
+                      minDate={new Date().toISOString().split("T")[0]}
+                      onDayPress={(day) => setSelectedDate(day.dateString)}
+                      markedDates={
+                        selectedDate ? { [selectedDate]: { selected: true } } : {}
+                      }
+                    />
+
+                  <View style={{flexDirection: 'row',alignItems:'center', justifyContent:'space-between'}}>
+                    <View>
+                      <TouchableOpacity
+                        style={{backgroundColor: "#f5f5f5", padding: 14, borderRadius: 8, marginVertical: 12}}
+                        onPress={() => setShowStartDropdown((p) => !p)}
+                      >
+                        <Text>
+                          Start Time:{" "}
+                          {startTime.toLocaleTimeString("en-GB", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </Text>
+                      </TouchableOpacity>
+          
+                      {showStartDropdown && (
+                        <View style={{backgroundColor: "#fff", borderRadius: 8, borderWidth: 1, 
+                          borderColor: "#ddd", marginBottom: 12}}
+                        >
+                          <ScrollView style={{ maxHeight: 200 }}>
+                        {timeSlots
+                          .filter((t) => {
+                            const [h] = t.split(":").map(Number);
+                            return h >= 8; // only show 8:00+ times
+                          })
+                          .map((t) => {
+                            const [h, m] = t.split(":").map(Number);
+                            const candidate = new Date(startTime);
+                            candidate.setHours(h, m || 0, 0, 0);
+      
+                          const isPast =
+                            selectedDate === new Date().toISOString().split("T")[0] &&
+                            candidate < new Date();
+      
+                          return (
+                          <TouchableOpacity
+                            key={t}
+                            disabled={isPast}
+                            style={[
+                              styles.dropdownItem,
+                              isPast && { opacity: 0.3 },
+                            ]}
+                            onPress={() => {
+                              setStartTime(candidate);
+                              setShowStartDropdown(false);
+                            }}
+                          >
+                            <Text>{t}</Text>
+                          </TouchableOpacity>
+                          );
+                        })}
+                          </ScrollView>
+                        </View>
+                      )}
+                    </View>
+
+                    <Text>-</Text>
+                    
+                    <View>
+                      <TouchableOpacity
+                      onPress={() => setShowEndDropdown((p) => !p)}
+                      style={{backgroundColor: "#f5f5f5", padding: 14, borderRadius: 8, marginVertical: 12}}
+                    >
+                      <Text>
+                        End Time:{" "}
+                        {endTime.toLocaleTimeString("en-GB", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {showEndDropdown && (
+                      <View style={{backgroundColor: "#fff", borderRadius: 8, borderWidth: 1, 
+                        borderColor: "#ddd", marginBottom: 12}}
+                      >
+                        <ScrollView style={{ maxHeight: 200 }}>
+                          {timeSlots.map((t) => {
+                            const [h] = t.split(":").map(Number);
+                            const candidate = new Date(startTime);
+                            candidate.setHours(h, 0, 0, 0);
+                            return candidate;
+                          })
+                          .filter((candidate) => candidate > startTime)
+                          .map((candidate, idx) => {
+                            const t = candidate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+                            const isPast = selectedDate === new Date().toISOString().split("T")[0] && candidate < new Date();
+                            return (
+                              <TouchableOpacity
+                                key={idx}
+                                disabled={isPast}
+                                style={[styles.dropdownItem, isPast && { opacity: 0.3 }]}
+                                onPress={() => {
+                                  setEndTime(candidate);
+                                  setShowEndDropdown(false);
+                                }}
+                              >
+                                <Text>{t}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                          </View>
+                        )}
+                        </View>
+                      </View>
+
+                      <TouchableOpacity style={styles.primaryBtn} onPress={closeCalendar}>
+                        <Text style={{ color: "white" }}>Done</Text>
+                      </TouchableOpacity>
+                    </Animated.View>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+
+            <View style={{marginVertical: 11.32, paddingHorizontal: 10, backgroundColor: 'white', borderRadius: 11.69,
+              marginHorizontal: 14, paddingVertical: 11.32, justifyContent: 'center'
+              }}>
+              <Text style={{fontFamily: 'Inter_400Regular', fontSize: 14, color: "#0A0A0A"}}>
+                Booking Summary
+              </Text>
+
+              <View style={{flexDirection:'column', borderRadius: 4.6, alignItems: 'center'}}>
+                {mainBoatImage && (
+                <Image
+                  source={{ uri: mainBoatImage }}
+                  style={{
+                    height: 154.8,
+                    width: "100%",
+                    borderRadius: 3.14,
+                    marginTop: 10,
+                  }}
+                  resizeMode="cover"
+                />
+                )}
+              </View>
+
+              <Text style={{fontFamily: 'Inter_600SemiBold', fontSize: 11.37, fontWeight: 600, marginTop: 5, marginBottom: 25}}>
+                {boat?.boatName}
+              </Text>
+
+              <View>
+                <View style={styles.info}>
+                  <Text style={styles.footerLabel}> Full name</Text>
+                  <Text style={styles.footerText}> {fullName}</Text>
+                </View>
+                <View style={styles.info}>
+                  <Text style={styles.footerLabel}> Email address</Text>
+                  <Text style={styles.footerText}> {email}</Text>
+                </View>
+                <View style={styles.info}>
+                  <Text style={styles.footerLabel}> Phone number</Text>
+                  <Text style={styles.footerText}> {phone}</Text>
+                </View>
+                <View style={styles.info}>
+                  <Text style={styles.footerLabel}> Time</Text>
+                  <Text style={styles.footerText}>
+                    {startTime.toLocaleTimeString([], {hour: "2-digit", hour12: true,})} {"-"}
+                    {endTime.toLocaleTimeString([], {hour: "2-digit", hour12: true,})}
+                  </Text>
+                </View>
+                <View style={styles.info}>
+                  <Text style={styles.footerLabel}> Duration</Text>
+                  <Text>
+                    {duration}
+                  </Text>
+
+                </View>
+                <View style={styles.info}>
+                  <Text style={styles.footerLabel}> Date </Text>
+                  <Text style={styles.footerText}> {selectedDate}</Text>
+                </View>
+
+                <View style={[styles.info, {paddingTop: 15, borderBottomWidth: 1,borderColor: "#0000001A", borderTopWidth: 1
+                    }]}>
+                  <Text style={styles.footerLabel}>₦{pricePerHour.toLocaleString()} × {duration} hour</Text>
+                  <Text style={styles.footerText}>₦{totalAmount.toLocaleString()}</Text>
+                </View>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between',alignItems: 'center',paddingTop: 29.06,}}>
+                  <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>Total</Text>
+                  <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>
+                    ₦{totalAmount.toLocaleString()}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity onPress={goNext}
+              style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding: 16, marginBottom: 50, marginHorizontal: 14,
+                marginTop: 20
+              }}
+            >
+              <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12, color: 'white', lineHeight: 11.32, textAlign:"center"}}>
+                Continue
+              </Text>
+            </TouchableOpacity>
+          </View>}
+
+          {step === 2 && 
+          <View>
+            <View style={{marginVertical: 11.32, paddingHorizontal: 10, backgroundColor: 'white', borderRadius: 11.69,
+              marginHorizontal: 14, paddingVertical: 11.32, justifyContent: 'center'
+            }}>
+              <Text style={styles.label}>Number of Guest</Text>
+              <TextInput
+                keyboardType="number-pad"
+                placeholder="0"
+                value={guest.toString()}
+                style={styles.input}
+                onChangeText={(value: string) => {
+                  const num = Number(value);
+
+                  if (isNaN(num)) {
+                    setGuest(1);
+                    return;
+                  }
+
+                  if (num < 1) {
+                    setGuest(0);
+                  } else if (num > 40) {
+                    setGuest(40);
+                  } else {
+                    setGuest(num);
+                  }
+                }}
+              />
+                <Text style={{fontSize: 10, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>Maximum capacity: 40</Text>
+
+                <Text style={styles.label}>Occasion</Text>
+
+                <TouchableOpacity
+                style={[
+                  styles.input,
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  },
+                ]}
+                onPress={openOccassionMenu}
+              >
+                <Text>{occasion || 'Select occasion'}</Text>
+                <Ionicons name="chevron-down" size={16} color="#888" />
+              </TouchableOpacity>
+
+              {occasionMenu && (
+                <Animated.View
+                  style={[
+                    styles.dropdown,
+                    {
+                      transform: [{ translateY: dropAnim }],
+                    },
+                  ]}
+                >
+                  {occasionOpt.map((item) => (
+                    <TouchableOpacity
+                      key={item}
+                      style={styles.dropdownItem}
+                      onPress={() => {
+                        setOccassion(item);
+                        closeOccassionMenu();
+                      }}
+                    >
+                      <Text>{item}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </Animated.View>
+              )}
+
+              <Text style={styles.label}>Special Request (optional)</Text>
+                  <TextInput
+                    placeholder="Any special request or requirement"
+                    style={[styles.input, {height: 67.69}]}
+                    
+                  />
+            </View>
+
+            <View style={{marginVertical: 11.32, paddingHorizontal: 10, backgroundColor: 'white', borderRadius: 11.69,
+              marginHorizontal: 14, paddingVertical: 11.32, justifyContent: 'center',
+            }}>
+              <Text style={{fontFamily: 'Inter_400Regular', fontSize: 14, color: "#0A0A0A"}}>
+                Booking Summary
+              </Text>
+              
+              <View style={{flexDirection:'column', borderRadius: 4.6, alignItems: 'center'}}>
+                {mainBoatImage && (
+                <Image
+                  source={{ uri: mainBoatImage }}
+                  style={{
+                    height: 154.8,
+                    width: "100%",
+                    borderRadius: 3.14,
+                    marginTop: 10,
+                  }}
+                  resizeMode="cover"
+                />
+                )}
+              </View>
+              <Text style={{fontFamily: 'Inter_600SemiBold', fontSize: 11.37, fontWeight: 600, marginTop: 5, marginBottom: 25}}>
+                {boat?.boatName}
+              </Text>
+
+              <View>
+                <View style={styles.info}>
+                  <Text style={styles.footerLabel}> Duration</Text>
+                  <Text style={styles.footerText}> {duration} hours</Text>
+                </View>
+                <View style={styles.info}>
+                  <Text style={styles.footerLabel}> Date</Text>
+                  <Text style={styles.footerText}> {selectedDate}</Text>
+                </View>
+                <View style={styles.info}>
+                  <Text style={styles.footerLabel}> Time</Text>
+                  <Text>
+                    {startTime.toLocaleTimeString([], {hour: "2-digit", hour12: true,})} {"-"}
+                    {endTime.toLocaleTimeString([], {hour: "2-digit", hour12: true,})}
+                  </Text>
+                </View>
+                <View style={styles.info}>
+                  <Text style={styles.footerLabel}> Guest</Text>
+                  <Text style={styles.footerText}> {guest}</Text>
+                </View>
+                <View style={styles.info}>
+                  <Text style={styles.footerLabel}> Occasion</Text>
+                  <Text style={styles.footerText}> {occasion}</Text>
+                </View>
+
+                <View style={[styles.info, {paddingTop: 15, borderBottomWidth: 1,borderColor: "#0000001A", borderTopWidth: 1
+                    }]}>
+                  <Text style={styles.footerLabel}>₦{pricePerHour.toLocaleString()} × {duration} hour</Text>
+                  <Text style={styles.footerText}>₦{totalAmount.toLocaleString()}</Text>
+                </View>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between',alignItems: 'center',paddingTop: 29.06,}}>
+                  <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>Total</Text>
+                  <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>
+                    ₦{totalAmount.toLocaleString()}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity onPress={goNext}
+              style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding: 16, marginHorizontal: 14,
+                marginTop: 20
+              }}
+            >
+              <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12, color: 'white', lineHeight: 11.32, textAlign:"center"}}>
+                Continue
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={goBack}
+              style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding: 16, marginBottom: 50, marginHorizontal: 14,
+                marginTop: 5
+              }}
+            >
+              <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12, color: 'white', lineHeight: 11.32, textAlign:"center"}}>
+                Back
+              </Text>
+            </TouchableOpacity>
+            </View>}
+          </View>
+
+          <View>
+            {step === 3 && 
+            <View>
+              <View>
+                <View style={{marginVertical: 11.32, backgroundColor: 'white', borderRadius: 11.69,
+                  marginHorizontal: 10, paddingVertical: 11.32, justifyContent: 'center', paddingHorizontal: 11.32
+                  }}>
+                <Text style={{fontFamily: 'Inter_400Regular', fontSize: 14, color: "#0A0A0A"}}>
+                  Booking Summary
+                </Text>
+                <View style={{flexDirection:'column', borderRadius: 4.6, alignItems: 'center'}}>
+                  {mainBoatImage && (
+                  <Image
+                    source={{ uri: mainBoatImage }}
+                    style={{
+                      height: 154.8,
+                      width: "100%",
+                      borderRadius: 3.14,
+                      marginTop: 10,
+                    }}
+                    resizeMode="cover"
+                  />
+                )}
+              </View>
+                <Text style={{fontFamily: 'Inter_600SemiBold', fontSize: 11.37, fontWeight: 600, marginTop: 5, marginBottom: 25}}>
+                  {boat?.boatName}
+                </Text>
+
+                <View>
+                  <View style={styles.info}>
+                    <Text style={styles.footerLabel}> Duration</Text>
+                    <Text style={styles.footerText}> {duration} hours</Text>
+                  </View>
+                  <View style={styles.info}>
+                    <Text style={styles.footerLabel}> Date</Text>
+                    <Text style={styles.footerText}> {selectedDate}</Text>
+                  </View>
+                  <View style={styles.info}>
+                    <Text style={styles.footerLabel}> Time</Text>
+                    <Text>
+                      {startTime.toLocaleTimeString([], {hour: "2-digit", hour12: true,})} {"-"}
+                      {endTime.toLocaleTimeString([], {hour: "2-digit", hour12: true,})}
                     </Text>
                   </View>
-
-                  <View style={[styles.line, step >= 2 && styles.activeLine]} />
-
-                  <View style={styles.stepBox}>
-                    <View
-                    style={[
-                    styles.circle,
-                    step === 2 ? styles.activeCircle :styles.inactiveCircle
-                    ]}
-                    >
-                    <Text style={step === 2 ? styles.activeNumber : styles.inactiveNumber}> 2 </Text>
-                    </View>
-                    <Text style={[step === 2 ? styles.activeLabel : styles. inactiveLabel]}>
-                              Trip Details
-                    </Text>
+                  <View style={styles.info}>
+                    <Text style={styles.footerLabel}> Guest</Text>
+                    <Text style={styles.footerText}> {guest}</Text>
+                  </View>
+                  <View style={styles.info}>
+                    <Text style={styles.footerLabel}> Occassion</Text>
+                    <Text style={styles.footerText}> {occasion}</Text>
                   </View>
 
-                  <View style={[styles.line, step >= 3 && styles.activeLine]} />
+                  <View style={[styles.info, {paddingTop: 15, borderBottomWidth: 1,borderColor: "#0000001A", borderTopWidth: 1
+                      }]}>
+                    <Text style={styles.footerLabel}>₦{pricePerHour.toLocaleString()} × {duration} hour</Text>
+                    <Text style={styles.footerText}>₦{totalAmount.toLocaleString()}</Text>
+                  </View>
+                  <View style={{flexDirection: 'row', justifyContent: 'space-between',alignItems: 'center',paddingTop: 29.06,}}>
+                    <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>Total</Text>
+                    <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>₦{totalAmount.toLocaleString()}</Text>
+                  </View>
+                </View>
+            </View>
 
-                  <View style={styles.stepBox}>
-                    <View
-                    style={[
-                    styles.circle,
-                    step === 3 ? styles.activeCircle : styles.inactiveCircle
-                    ]}
-                    >
-                    <Text style={step === 3 ? styles.activeNumber : styles.inactiveNumber}> 3 </Text>
-                    </View>
-                    <Text style={step === 3 ? styles.activeLabel : styles. inactiveLabel}>
-                              Payment
+            <View style={{marginVertical: 11.32, backgroundColor: 'white', borderRadius: 11.69,
+                  marginHorizontal: 10, paddingVertical: 11.32, justifyContent: 'center', paddingHorizontal: 11.32
+                  }}>
+              <View>
+                <Text style={{fontFamily: 'Inter_600SemiBold', fontSize: 16, fontWeight: 600, marginVertical: 10}}>
+                  Complete Payment
+                </Text>
+                <Text>You will be redirected to Paystack to complete your payment securely. 
+                  Paystack accepts card payments, bank transfers, and other payment methods.
+                </Text>
+
+                <View style={{backgroundColor: '#F0FDF4', flexDirection: 'row', padding:10, alignItems: 'center',
+                  borderRadius: 6,borderColor: "#125526ff", borderWidth: 1, gap:10,marginVertical: 12
+                }}>
+                  <MaterialIcons name="lock-outline" size={24} color="#125526ff"/>
+                  <Text style={{paddingRight:60}}>
+                    Your payment is secured by Paystack. We never store your card details.
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={{ flex: 1 }}>
+
+            {!paystackUrl && !showSuccess && (
+              <>
+              <TouchableOpacity
+                onPress={createBooking}
+                style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding: 16, marginHorizontal: 14,
+                marginTop: 20
+              }}
+              >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#fff"/>
+                  ) : (
+                    <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12, color: 'white', textAlign:"center"}}>
+                      Proceed to Payment
                     </Text>
+                  )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={goBack}
+                style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding: 16, marginBottom: 50, marginHorizontal: 14,
+                marginTop: 10
+              }}
+              >
+                <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12, color: 'white', lineHeight: 11.32, textAlign:"center"}}>
+                  Back
+                </Text>
+              </TouchableOpacity>
+              </>
+            )}
+
+            {paystackUrl && (
+              <WebView
+                source={{ uri: paystackUrl }}
+                startInLoadingState
+                javaScriptEnabled
+                domStorageEnabled
+                onNavigationStateChange={(nav) => {
+                  if (nav.url.includes("callback") && paymentReference) {
+                    // verifyPayment();
+                  }
+                }}
+                style={{ flex: 1 }}
+              />
+            )}
+
+            {showSuccess && 
+              <Modal isVisible={showSuccess}>
+              <View style={styles.modalCard}>
+                <View style={{ alignItems: "center" }}>
+                  <Image source={require('@/assets/images/Clip.png')} width={161.86} height={195.38} />
+                  <Image
+                    source={require('@/assets/images/success-aaIiyEo0wd.png')}
+                    width={143.12}
+                    height={114.5}
+                    style={{ position: 'absolute', bottom: 30, left: 5 }}
+                  />
+                </View>
+                <Text style={{ fontSize: 16, fontWeight: "600", fontFamily: 'Inter_600SemiBold', textAlign:'center' }}>
+                  Booking Confirmed
+                </Text>
+                <Text style={{ fontSize: 12, fontWeight: "400", fontFamily: 'Inter_400Regular', color: '#4A5565', textAlign:'center' }}>
+                  Your booking has been confirmed and the operator has been notified.
+                </Text>
+
+                <View style={{ backgroundColor:'#F7F7F7', paddingHorizontal: 16.47, paddingVertical: 10.29, marginVertical:10, borderRadius:4.12 }}>
+                  <View style={[styles.info, { paddingHorizontal: 8}]}>
+                    <Text style={styles.footerLabel}> Booking ID:</Text>
+                    <Text style={styles.footerText}> {paymentReference} </Text>
+                  </View>
+                  <View style={{borderBottomWidth: 1,borderColor: "#0000001A", paddingHorizontal: 28}}></View>
+                  <View style={[styles.info, {paddingTop: 10}]}>
+                    <Text style={styles.footerLabel}> Duration</Text>
+                    <Text style={styles.footerText}> {duration} hours</Text>
+                  </View>
+                  <View style={styles.info}>
+                    <Text style={styles.footerLabel}> Date</Text>
+                    <Text style={styles.footerText}> {selectedDate}</Text>
+                  </View>
+                  <View style={[styles.info, {borderBottomWidth: 1,borderColor: "#0000001A"}]}>
+                    <Text style={styles.footerLabel}> Time</Text>
+                    <Text>{startTime.toLocaleTimeString([], { hour: "2-digit", hour12: true })} - {endTime.toLocaleTimeString([], { hour: "2-digit", hour12: true })}</Text>
                   </View>
                 </View>
 
-              <View>
-                {step ===1 && <View>
-                    <View style={styles.form}>
-                      <Text style={styles.label}> Full Name </Text>
-                      <TextInput
-                      placeholder="Enter your full name"
-                      placeholderTextColor='#787878'
-                      style={styles.input}
-                      // value={fullName}
-                      onChangeText={setFullName}
-                      returnKeyType="next"
-                      onSubmitEditing={() => emailRef.current ?.focus()}
-                      />
-                      <Text style={styles.label}>Email address</Text>
-                      <TextInput
-                      
-                      placeholder="example@gmail.com"
-                      placeholderTextColor='#787878'
-                      keyboardType="email-address"
-                      style={styles.input}
-                      value={email}
-                      editable={false}
-                      returnKeyType="next"
-                      />
-                      <Text style={styles.label}>Phone Number</Text>
-                      <TextInput
-                      placeholder="Enter your phone number"
-                      placeholderTextColor='#787878'
-                      keyboardType="phone-pad"
-                      style={styles.input}
-                      value={phone}
-                      editable={false}
-                      returnKeyType="next"
-                      ref={phoneRef}
-                      />
-                      <Text style={styles.label}>Date & Time</Text>
-                      <TouchableOpacity onPress={openCalendar}
-                        style={styles.input}
-                      >
-                        <Text>
-                          Select Date
-                        </Text>
-                      </TouchableOpacity>
+                <Text style={{ textAlign:'center', fontSize: 12, fontWeight: "400", fontFamily: 'Inter_400Regular', color: '#4A5565', marginVertical: 5 }}>
+                  A confirmation email has been sent to your email address with all booking details.
+                </Text>
 
-                      {calendarOpen && (
-                        <>
-                          <TouchableOpacity onPress={closeCalendar}>
-                          <Animated.View
-                            style={{transform: [{ translateY: slideAnim }]}}
-                          >
-                            <Calendar
-                              minDate={new Date().toISOString().split("T")[0]}
-                              onDayPress={(day) => setSelectedDate(day.dateString)}
-                              markedDates={
-                                selectedDate ? { [selectedDate]: { selected: true } } : {}
-                              }
-                            />
+                <TouchableOpacity
+                  onPress={goToMyBookings}
+                  style={{ backgroundColor: '#1A1A1A', borderRadius: 26.16, padding: 15, marginBottom: 10, marginTop: 20 }}
+                >
+                  <Text style={{ fontFamily: 'Inter_500Medium', fontWeight: "500", fontSize:12, color: 'white', textAlign:"center" }}>View Booking</Text>
+                </TouchableOpacity>
 
-                          <View style={{flexDirection: 'row',alignItems:'center', justifyContent:'space-between'}}>
-                            <View>
-                              <TouchableOpacity
-                                style={{backgroundColor: "#f5f5f5", padding: 14, borderRadius: 8, marginVertical: 12}}
-                                onPress={() => setShowStartDropdown((p) => !p)}
-                              >
-                                <Text>
-                                  Start Time:{" "}
-                                  {startTime.toLocaleTimeString("en-GB", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </Text>
-                              </TouchableOpacity>
-                  
-                              {showStartDropdown && (
-                                <View style={{backgroundColor: "#fff", borderRadius: 8, borderWidth: 1, 
-                                  borderColor: "#ddd", marginBottom: 12}}
-                                >
-                                  <ScrollView style={{ maxHeight: 200 }}>
-                                {timeSlots.map((t) => {
-                                  const [h] = t.split(":").map(Number);
-                                  const candidate = new Date(startTime);
-                                  candidate.setHours(h, 0, 0, 0);
-              
-                                  const isPast =
-                                    selectedDate === new Date().toISOString().split("T")[0] &&
-                                    candidate < new Date();
-              
-                                  return (
-                                  <TouchableOpacity
-                                    key={t}
-                                    disabled={isPast}
-                                    style={[
-                                      styles.dropdownItem,
-                                      isPast && { opacity: 0.3 },
-                                    ]}
-                                    onPress={() => {
-                                      setStartTime(candidate);
-                                      setShowStartDropdown(false);
-                                    }}
-                                  >
-                                    <Text>{t}</Text>
-                                  </TouchableOpacity>
-                                  );
-                                })}
-                                  </ScrollView>
-                                </View>
-                              )}
-                            </View>
-
-                            <Text>-</Text>
-                            
-                            <View>
-                              <TouchableOpacity
-                              onPress={() => setShowEndDropdown((p) => !p)}
-                              style={{backgroundColor: "#f5f5f5", padding: 14, borderRadius: 8, marginVertical: 12}}
-                            >
-                              <Text>
-                                End Time:{" "}
-                                {endTime.toLocaleTimeString("en-GB", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </Text>
-                            </TouchableOpacity>
-
-                            {showEndDropdown && (
-                              <View style={{backgroundColor: "#fff", borderRadius: 8, borderWidth: 1, 
-                                borderColor: "#ddd", marginBottom: 12}}
-                              >
-                                <ScrollView style={{ maxHeight: 200 }}>
-                                  {timeSlots.map((t) => {
-                                    const [h] = t.split(":").map(Number);
-                                    const candidate = new Date(startTime);
-                                    candidate.setHours(h, 0, 0, 0);
-                                    return candidate;
-                                  })
-                                  .filter((candidate) => candidate > startTime)
-                                  .map((candidate, idx) => {
-                                    const t = candidate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-                                    const isPast = selectedDate === new Date().toISOString().split("T")[0] && candidate < new Date();
-                                    return (
-                                      <TouchableOpacity
-                                        key={idx}
-                                        disabled={isPast}
-                                        style={[styles.dropdownItem, isPast && { opacity: 0.3 }]}
-                                        onPress={() => {
-                                          setEndTime(candidate);
-                                          setShowEndDropdown(false);
-                                        }}
-                                      >
-                                        <Text>{t}</Text>
-                                      </TouchableOpacity>
-                                    );
-                                  })}
-                                </ScrollView>
-                                  </View>
-                                )}
-                                </View>
-                              </View>
-
-                              <TouchableOpacity style={styles.primaryBtn} onPress={closeCalendar}>
-                                <Text style={{ color: "white" }}>Done</Text>
-                              </TouchableOpacity>
-                            </Animated.View>
-                          </TouchableOpacity>
-                        </>
-                      )}
-                    </View>
-
-                    <View style={{marginVertical: 11.32, paddingHorizontal: 10, backgroundColor: 'white', borderRadius: 11.69,
-                      marginHorizontal: 14, paddingVertical: 11.32, justifyContent: 'center'
-                      }}>
-                      <Text style={{fontFamily: 'Inter_400Regular', fontSize: 14, color: "#0A0A0A"}}>
-                        Booking Summary
-                      </Text>
-
-                      <View style={{flexDirection:'column', borderRadius: 4.6, alignItems: 'center'}}>
-                        {mainBoatImage && (
-                        <Image
-                          source={{ uri: mainBoatImage }}
-                          style={{
-                            height: 154.8,
-                            width: "100%",
-                            borderRadius: 3.14,
-                            marginTop: 10,
-                          }}
-                          resizeMode="cover"
-                        />
-                        )}
-                      </View>
-
-                      <Text style={{fontFamily: 'Inter_600SemiBold', fontSize: 11.37, fontWeight: 600, marginTop: 5, marginBottom: 25}}>
-                        The Serenity Yacht 
-                      </Text>
-
-                      <View>
-                        <View style={styles.info}>
-                          <Text style={styles.footerLabel}> Full name</Text>
-                          <Text style={styles.footerText}> {fullName}</Text>
-                        </View>
-                        <View style={styles.info}>
-                          <Text style={styles.footerLabel}> Email address</Text>
-                          <Text style={styles.footerText}> {email}</Text>
-                        </View>
-                        <View style={styles.info}>
-                          <Text style={styles.footerLabel}> Phone number</Text>
-                          <Text style={styles.footerText}> {phone}</Text>
-                        </View>
-                        <View style={styles.info}>
-                          <Text style={styles.footerLabel}> Time</Text>
-                          <Text style={styles.footerText}>
-                            {startTime.toLocaleTimeString([], {hour: "2-digit", hour12: true,})} {"-"}
-                            {endTime.toLocaleTimeString([], {hour: "2-digit", hour12: true,})}
-                          </Text>
-                        </View>
-                        <View style={styles.info}>
-                          <Text style={styles.footerLabel}> Duration</Text>
-                          <Text>
-                            {duration}
-                          </Text>
-
-                        </View>
-                        <View style={styles.info}>
-                          <Text style={styles.footerLabel}> Date </Text>
-                          <Text style={styles.footerText}> {selectedDate}</Text>
-                        </View>
-
-                        <View style={[styles.info, {paddingTop: 15, borderBottomWidth: 1,borderColor: "#0000001A", borderTopWidth: 1
-                            }]}>
-                          <Text style={styles.footerLabel}>₦{pricePerHour.toLocaleString()} × {duration} hour</Text>
-                          <Text style={styles.footerText}>₦{totalAmount.toLocaleString()}</Text>
-                        </View>
-                        <View style={{flexDirection: 'row', justifyContent: 'space-between',alignItems: 'center',paddingTop: 29.06,}}>
-                          <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>Total</Text>
-                          <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>
-                            ₦{totalAmount.toLocaleString()}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    <TouchableOpacity onPress={goNext}
-                      style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding: 16, marginBottom: 50, marginHorizontal: 14,
-                        marginTop: 20
-                      }}
-                    >
-                      <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12, color: 'white', lineHeight: 11.32, textAlign:"center"}}>
-                        Continue
-                      </Text>
-                    </TouchableOpacity>
-                  </View>}
-
-                  {step === 2 && 
-                  <View>
-                    <View style={{marginVertical: 11.32, paddingHorizontal: 10, backgroundColor: 'white', borderRadius: 11.69,
-                      marginHorizontal: 14, paddingVertical: 11.32, justifyContent: 'center'
-                    }}>
-                      <Text style={styles.label}>Number of Guest</Text>
-                      <TextInput
-                        keyboardType="number-pad"
-                        placeholder="0"
-                        value={guest.toString()}
-                        style={styles.input}
-                        onChangeText={(value: string) => {
-                          const num = Number(value);
-
-                          if (isNaN(num)) {
-                            setGuest(1);
-                            return;
-                          }
-
-                          if (num < 1) {
-                            setGuest(0);
-                          } else if (num > 40) {
-                            setGuest(40);
-                          } else {
-                            setGuest(num);
-                          }
-                        }}
-                      />
-                        <Text style={{fontSize: 10, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>Maximum capacity: 40</Text>
-
-                        <Text style={styles.label}>Occasion</Text>
-
-                        <TouchableOpacity
-                        style={[
-                          styles.input,
-                          {
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                          },
-                        ]}
-                        onPress={openOccassionMenu}
-                      >
-                        <Text>{occasion || 'Select occasion'}</Text>
-                        <Ionicons name="chevron-down" size={16} color="#888" />
-                      </TouchableOpacity>
-
-                      {occasionMenu && (
-                        <Animated.View
-                          style={[
-                            styles.dropdown,
-                            {
-                              transform: [{ translateY: dropAnim }],
-                            },
-                          ]}
-                        >
-                          {occasionOpt.map((item) => (
-                            <TouchableOpacity
-                              key={item}
-                              style={styles.dropdownItem}
-                              onPress={() => {
-                                setOccassion(item);
-                                closeOccassionMenu();
-                              }}
-                            >
-                              <Text>{item}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </Animated.View>
-                      )}
-
-                      <Text style={styles.label}>Special Request (optional)</Text>
-                          <TextInput
-                            placeholder="Any special request or requirement"
-                            style={[styles.input, {height: 67.69}]}
-                            
-                          />
-                    </View>
-
-                    <View style={{marginVertical: 11.32, paddingHorizontal: 10, backgroundColor: 'white', borderRadius: 11.69,
-                      marginHorizontal: 14, paddingVertical: 11.32, justifyContent: 'center',
-                    }}>
-                      <Text style={{fontFamily: 'Inter_400Regular', fontSize: 14, color: "#0A0A0A"}}>
-                        Booking Summary
-                      </Text>
-                      
-                      <View style={{flexDirection:'column', borderRadius: 4.6, alignItems: 'center'}}>
-                        {mainBoatImage && (
-                        <Image
-                          source={{ uri: mainBoatImage }}
-                          style={{
-                            height: 154.8,
-                            width: "100%",
-                            borderRadius: 3.14,
-                            marginTop: 10,
-                          }}
-                          resizeMode="cover"
-                        />
-                        )}
-                      </View>
-                      <Text style={{fontFamily: 'Inter_600SemiBold', fontSize: 11.37, fontWeight: 600, marginTop: 5, marginBottom: 25}}>
-                        The Serenity Yacht 
-                      </Text>
-
-                      <View>
-                        <View style={styles.info}>
-                          <Text style={styles.footerLabel}> Duration</Text>
-                          <Text style={styles.footerText}> {duration} hours</Text>
-                        </View>
-                        <View style={styles.info}>
-                          <Text style={styles.footerLabel}> Date</Text>
-                          <Text style={styles.footerText}> {selectedDate}</Text>
-                        </View>
-                        <View style={styles.info}>
-                          <Text style={styles.footerLabel}> Time</Text>
-                          <Text>
-                            {startTime.toLocaleTimeString([], {hour: "2-digit", hour12: true,})} {"-"}
-                            {endTime.toLocaleTimeString([], {hour: "2-digit", hour12: true,})}
-                          </Text>
-                        </View>
-                        <View style={styles.info}>
-                          <Text style={styles.footerLabel}> Guest</Text>
-                          <Text style={styles.footerText}> {guest}</Text>
-                        </View>
-                        <View style={styles.info}>
-                          <Text style={styles.footerLabel}> Occasion</Text>
-                          <Text style={styles.footerText}> {occasion}</Text>
-                        </View>
-
-                        <View style={[styles.info, {paddingTop: 15, borderBottomWidth: 1,borderColor: "#0000001A", borderTopWidth: 1
-                            }]}>
-                          <Text style={styles.footerLabel}>₦{pricePerHour.toLocaleString()} × {duration} hour</Text>
-                          <Text style={styles.footerText}>₦{totalAmount.toLocaleString()}</Text>
-                        </View>
-                        <View style={{flexDirection: 'row', justifyContent: 'space-between',alignItems: 'center',paddingTop: 29.06,}}>
-                          <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>Total</Text>
-                          <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>
-                            ₦{totalAmount.toLocaleString()}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    <TouchableOpacity onPress={goNext}
-                      style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding: 16, marginHorizontal: 14,
-                        marginTop: 20
-                      }}
-                    >
-                      <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12, color: 'white', lineHeight: 11.32, textAlign:"center"}}>
-                        Continue
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity onPress={goBack}
-                      style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding: 16, marginBottom: 50, marginHorizontal: 14,
-                        marginTop: 5
-                      }}
-                    >
-                      <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12, color: 'white', lineHeight: 11.32, textAlign:"center"}}>
-                        Back
-                      </Text>
-                    </TouchableOpacity>
-                    </View>}
-                  </View>
-
-                  <View>
-                    {step === 3 && 
-                    <View>
-                      <View>
-                        <View style={{marginVertical: 11.32, backgroundColor: 'white', borderRadius: 11.69,
-                          marginHorizontal: 10, paddingVertical: 11.32, justifyContent: 'center', paddingHorizontal: 11.32
-                          }}>
-                        <Text style={{fontFamily: 'Inter_400Regular', fontSize: 14, color: "#0A0A0A"}}>
-                          Booking Summary
-                        </Text>
-                        <View style={{flexDirection:'column', borderRadius: 4.6, alignItems: 'center'}}>
-                          {mainBoatImage && (
-                          <Image
-                            source={{ uri: mainBoatImage }}
-                            style={{
-                              height: 154.8,
-                              width: "100%",
-                              borderRadius: 3.14,
-                              marginTop: 10,
-                            }}
-                            resizeMode="cover"
-                          />
-                        )}
-                      </View>
-                        <Text style={{fontFamily: 'Inter_600SemiBold', fontSize: 11.37, fontWeight: 600, marginTop: 5, marginBottom: 25}}>
-                          The Serenity Yacht 
-                        </Text>
-
-                        <View>
-                          <View style={styles.info}>
-                            <Text style={styles.footerLabel}> Duration</Text>
-                            <Text style={styles.footerText}> {duration} hours</Text>
-                          </View>
-                          <View style={styles.info}>
-                            <Text style={styles.footerLabel}> Date</Text>
-                            <Text style={styles.footerText}> {selectedDate}</Text>
-                          </View>
-                          <View style={styles.info}>
-                            <Text style={styles.footerLabel}> Time</Text>
-                            <Text>
-                              {startTime.toLocaleTimeString([], {hour: "2-digit", hour12: true,})} {"-"}
-                              {endTime.toLocaleTimeString([], {hour: "2-digit", hour12: true,})}
-                            </Text>
-                          </View>
-                          <View style={styles.info}>
-                            <Text style={styles.footerLabel}> Guest</Text>
-                            <Text style={styles.footerText}> {guest}</Text>
-                          </View>
-                          <View style={styles.info}>
-                            <Text style={styles.footerLabel}> Occassion</Text>
-                            <Text style={styles.footerText}> {occasion}</Text>
-                          </View>
-
-                          <View style={[styles.info, {paddingTop: 15, borderBottomWidth: 1,borderColor: "#0000001A", borderTopWidth: 1
-                              }]}>
-                            <Text style={styles.footerLabel}>₦{pricePerHour.toLocaleString()} × {duration} hour</Text>
-                            <Text style={styles.footerText}>₦{totalAmount.toLocaleString()}</Text>
-                          </View>
-                          <View style={{flexDirection: 'row', justifyContent: 'space-between',alignItems: 'center',paddingTop: 29.06,}}>
-                            <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>Total</Text>
-                            <Text style={{fontSize: 16, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>₦{totalAmount.toLocaleString()}</Text>
-                          </View>
-                        </View>
-                    </View>
-
-                    <View style={{marginVertical: 11.32, backgroundColor: 'white', borderRadius: 11.69,
-                          marginHorizontal: 10, paddingVertical: 11.32, justifyContent: 'center', paddingHorizontal: 11.32
-                          }}>
-                      <View>
-                        <Text style={{fontFamily: 'Inter_600SemiBold', fontSize: 16, fontWeight: 600, marginVertical: 10}}>
-                          Complete Payment
-                        </Text>
-                        <Text>You will be redirected to Paystack to complete your payment securely. 
-                          Paystack accepts card payments, bank transfers, and other payment methods.
-                        </Text>
-
-                        <View style={{backgroundColor: '#F0FDF4', flexDirection: 'row', padding:10, alignItems: 'center',
-                          borderRadius: 6,borderColor: "#125526ff", borderWidth: 1, gap:10,marginVertical: 12
-                        }}>
-                          <MaterialIcons name="lock-outline" size={24} color="#125526ff"/>
-                          <Text style={{paddingRight:60}}>
-                            Your payment is secured by Paystack. We never store your card details.
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    <View style={{ flex: 1 }}>
-
-                    {!paystackUrl && !showSuccess && (
-                      <>
-                      <TouchableOpacity
-                        onPress={createBooking}
-                        style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding: 16, marginHorizontal: 14,
-                        marginTop: 20
-                      }}
-                      >
-                         {loading ? (
-                            <ActivityIndicator size="small" color="#fff"/>
-                          ) : (
-                            <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12, color: 'white', textAlign:"center"}}>
-                              Proceed to Payment
-                            </Text>
-                          )}
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={goBack}
-                        style={{backgroundColor: '#1A1A1A', borderRadius: 28.3, padding: 16, marginBottom: 50, marginHorizontal: 14,
-                        marginTop: 10
-                      }}
-                      >
-                        <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12, color: 'white', lineHeight: 11.32, textAlign:"center"}}>
-                          Back
-                        </Text>
-                      </TouchableOpacity>
-                      </>
-                    )}
-
-                    {paystackUrl && (
-                      <WebView
-                        source={{ uri: paystackUrl }}
-                        startInLoadingState
-                        javaScriptEnabled
-                        domStorageEnabled
-                        onNavigationStateChange={(nav) => {
-                          if (nav.url.includes("callback") && paymentReference) {
-                            // verifyPayment();
-                          }
-                        }}
-                        style={{ flex: 1 }}
-                      />
-                    )}
-
-                    {showSuccess && 
-                      <Modal isVisible={showSuccess}>
-                      <View style={styles.modalCard}>
-                        <View style={{ alignItems: "center" }}>
-                          <Image source={require('@/assets/images/Clip.png')} width={161.86} height={195.38} />
-                          <Image
-                            source={require('@/assets/images/success-aaIiyEo0wd.png')}
-                            width={143.12}
-                            height={114.5}
-                            style={{ position: 'absolute', bottom: 30, left: 5 }}
-                          />
-                        </View>
-                        <Text style={{ fontSize: 16, fontWeight: "600", fontFamily: 'Inter_600SemiBold', textAlign:'center' }}>
-                          Booking Confirmed
-                        </Text>
-                        <Text style={{ fontSize: 12, fontWeight: "400", fontFamily: 'Inter_400Regular', color: '#4A5565', textAlign:'center' }}>
-                          Your booking has been confirmed and the operator has been notified.
-                        </Text>
-
-                        <View style={{ backgroundColor:'#F7F7F7', paddingHorizontal: 16.47, paddingVertical: 10.29, marginVertical:10, borderRadius:4.12 }}>
-                          <View style={[styles.info, { paddingHorizontal: 8}]}>
-                            <Text style={styles.footerLabel}> Booking ID:</Text>
-                            <Text style={styles.footerText}> {paymentReference} </Text>
-                          </View>
-                          <View style={{borderBottomWidth: 1,borderColor: "#0000001A", paddingHorizontal: 28}}></View>
-                          <View style={[styles.info, {paddingTop: 10}]}>
-                            <Text style={styles.footerLabel}> Duration</Text>
-                            <Text style={styles.footerText}> {duration} hours</Text>
-                          </View>
-                          <View style={styles.info}>
-                            <Text style={styles.footerLabel}> Date</Text>
-                            <Text style={styles.footerText}> {selectedDate}</Text>
-                          </View>
-                          <View style={[styles.info, {borderBottomWidth: 1,borderColor: "#0000001A"}]}>
-                            <Text style={styles.footerLabel}> Time</Text>
-                            <Text>{startTime.toLocaleTimeString([], { hour: "2-digit", hour12: true })} - {endTime.toLocaleTimeString([], { hour: "2-digit", hour12: true })}</Text>
-                          </View>
-                        </View>
-
-                        <Text style={{ textAlign:'center', fontSize: 12, fontWeight: "400", fontFamily: 'Inter_400Regular', color: '#4A5565', marginVertical: 5 }}>
-                          A confirmation email has been sent to your email address with all booking details.
-                        </Text>
-
-                        <TouchableOpacity
-                          onPress={goToBookingDetails}
-                          style={{ backgroundColor: '#1A1A1A', borderRadius: 26.16, padding: 15, marginBottom: 10, marginTop: 20 }}
-                        >
-                          <Text style={{ fontFamily: 'Inter_500Medium', fontWeight: "500", fontSize:12, color: 'white', textAlign:"center" }}>View Booking</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          onPress={() => {
-                            setShowSuccess(false);
-                            router.replace("/(tabs)/HomePage");
-                          }}
-                        >
-                          <Text style={{ textAlign:'center', fontFamily: 'Inter_500Medium', fontWeight: "500", fontSize:12 }}>Go back to Home</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </Modal>
-                    }
-                          </View>
-                        </View>
-                    </View>}
-{/* 
-                    <Modal isVisible={showSuccess}>
-                      <View style={styles.modalCard}>
-                        <View style={{alignItems: "center",}}>
-                          <Image
-                            source={require('@/assets/images/Clip.png')}
-                            width={161.86}
-                            height={195.38}
-                          />
-                          <Image
-                            source={require('@/assets/images/success-aaIiyEo0wd.png')}
-                            width={143.12}
-                            height={114.5}
-                            style={{position: 'absolute', bottom: 30, left: 5}}
-                          />
-                        </View>
-                        <Text style={{fontSize: 16, fontWeight: "600", fontFamily: 'Inter_600SemiBold', textAlign:'center'}}>
-                          Booking Confirmed
-                        </Text>
-                        <Text style={{fontSize: 12, fontWeight: "400", fontFamily: 'Inter_400Regular', color: '#4A5565', textAlign:'center'}}>
-                          Your booking has been confirmed and the operator has been notified.
-                        </Text>
-
-                        <View style={{backgroundColor:'#F7F7F7', paddingHorizontal: 16.47, paddingVertical: 10.29, marginVertical:10,
-                          borderRadius:4.12
-                        }}>
-                          <View style={[styles.info, { paddingHorizontal: 8}]}>
-                          <Text style={styles.footerLabel}> Booking ID:</Text>
-                          <Text style={styles.footerText}> {paymentReference} </Text>
-                          </View>
-                          <View style={{borderBottomWidth: 1,borderColor: "#0000001A", paddingHorizontal: 28}}></View>
-                          <View style={[styles.info, {paddingTop: 10}]}>
-                          <Text style={styles.footerLabel}> Duration</Text>
-                          <Text style={styles.footerText}> {duration} hours</Text>
-                          </View>
-                          <View style={styles.info}>
-                          <Text style={styles.footerLabel}> Date</Text>
-                          <Text style={styles.footerText}> {selectedDate}</Text>
-                          </View>
-                          <View style={[styles.info, {borderBottomWidth: 1,borderColor: "#0000001A"}]}>
-                          <Text style={styles.footerLabel}> Time</Text>
-                          <Text>
-                            {startTime.toLocaleTimeString([], {hour: "2-digit", hour12: true,})} {"-"}
-                            {endTime.toLocaleTimeString([], {hour: "2-digit", hour12: true,})}
-                          </Text>
-                          </View>
-                        </View>
-
-                        <View>
-                          <Text style={{textAlign:'center', fontSize: 12, fontWeight: "400", fontFamily: 'Inter_400Regular', color: '#4A5565',}}>
-                            A confirmation email has been sent to your email address with all 
-                            the booking details and directions to the pickup location.
-                          </Text>
-                        </View>
-
-                        <TouchableOpacity
-                        onPress={goToBookingDetails}
-                          style={{backgroundColor: '#1A1A1A', borderRadius: 26.16, padding: 15, marginBottom: 10,
-                            marginTop: 20,
-                          }}
-                        >
-                          <Text style={{fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12, color: 'white', textAlign:"center"}}>
-                            View Booking
-                          </Text>
-                        </TouchableOpacity>
-              
-                        <TouchableOpacity
-                          onPress={() => {
-                            setShowSuccess(false);
-                            router.replace("/(tabs)/HomePage");
-                          }}
-                        >
-                          <Text style={{textAlign:'center', fontFamily: 'Inter_500Medium', fontWeight: 500, fontSize:12}}>Go back to Home</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </Modal> */}
-                  </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowSuccess(false);
+                    router.replace("/(tabs)/HomePage");
+                  }}
+                >
+                  <Text style={{ textAlign:'center', fontFamily: 'Inter_500Medium', fontWeight: "500", fontSize:12 }}>Go back to Home</Text>
+                </TouchableOpacity>
               </View>
-            </ScrollView>
+            </Modal>
+            }
+                  </View>
+                </View>
+            </View>}
+          </View>
+        </View>
+      </ScrollView>
       </>
     )
 }

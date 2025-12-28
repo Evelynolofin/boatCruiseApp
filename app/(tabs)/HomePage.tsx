@@ -322,7 +322,7 @@ const styles= StyleSheet.create({
 
     section:{
         paddingHorizontal: 8,
-        paddingTop: 30,
+        paddingTop: 50,
         paddingBottom: 16
     },
 

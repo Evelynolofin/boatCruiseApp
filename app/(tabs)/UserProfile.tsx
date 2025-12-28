@@ -101,7 +101,7 @@ const handleChangePassword = async () => {
         <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
         <View style={{paddingHorizontal: 10, paddingVertical: 20}}>
           <TouchableOpacity 
-              style={{flexDirection: 'row', gap: 2, alignItems:'center'}}
+              style={{flexDirection: 'row', gap: 2, alignItems:'center', marginTop:20}}
               onPress={() => router.navigate('/(tabs)/FeaturedYacht')}
           >
               <Ionicons
