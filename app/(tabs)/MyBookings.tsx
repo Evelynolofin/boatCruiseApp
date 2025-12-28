@@ -332,11 +332,10 @@ const BookingCard = ({ booking }: { booking: Booking }) => {
       <TouchableOpacity
         style={{
           backgroundColor: "#1A1A1A",
-          borderRadius: 28.3,
-          padding: 16,
-          marginBottom: 50,
-          marginHorizontal: 14,
           marginTop: 20,
+          borderWidth: 1,
+          borderRadius: 8,
+          padding: 14,
         }}
         onPress={() =>
           router.push({
