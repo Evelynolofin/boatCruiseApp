@@ -83,6 +83,8 @@ export default function BookingPage(){
     const slideAnim = useRef(new Animated.Value(PANEL_WIDTH)).current;
     const dropAnim = useRef(new Animated.Value(-PANEL_HEIGHT)).current;
 
+    const webViewRef = useRef<WebView>(null);
+
     const openPanel = () => {
         setProfile(true);
         slideAnim.setValue(PANEL_WIDTH);
@@ -166,6 +168,11 @@ export default function BookingPage(){
         duration: 0,
         useNativeDriver: true,
       }).start(() => setOccassionMenu(false));
+    };
+
+    const extractReference = (url: string): string => {
+    const match = url.match(/reference=([^&]+)/);
+      return match?.[1] ?? "";
     };
 
 
@@ -417,7 +424,11 @@ const verifyPayment = async (reference: string) => {
         [
           {
             text: "OK",
-            onPress: () => router.push("/(tabs)/BookingDetails"),
+            onPress: () => router.push({
+              pathname: "/(tabs)/MyBookings",
+              params: {boatId: boatId}
+            })
+            // onPress: () => router.push("/(tabs)/MyBookings"),
           },
         ]
       );
@@ -1150,20 +1161,27 @@ const verifyPayment = async (reference: string) => {
             )}
 
             {paystackUrl && (
-              <WebView
-                source={{ uri: paystackUrl }}
-                startInLoadingState
-                javaScriptEnabled
-                domStorageEnabled
-                onNavigationStateChange={(nav) => {
-                  if (nav.url.includes("callback") && paymentReference) {
-                    // verifyPayment();
-                  }
-                }}
-                style={{ flex: 1 }}
-              />
-            )}
+  <WebView
+    ref={webViewRef}
+    source={{ uri: paystackUrl }}
+    javaScriptEnabled
+    domStorageEnabled
+    startInLoadingState
+    onShouldStartLoadWithRequest={(request) => {
+      const { url } = request;
 
+      // 🚫 BLOCK Paystack redirect completely
+      if (url.includes("callback") || url.includes("reference=")) {
+        setPaystackUrl(null); // close WebView
+        verifyPayment(extractReference(url));
+        return false; // ⛔ PREVENT navigation
+      }
+
+      return true; // allow Paystack pages
+    }}
+    style={{ flex: 1 }}
+  />
+)}
             {showSuccess && 
               <Modal isVisible={showSuccess}>
               <View style={styles.modalCard}>
@@ -1208,7 +1226,10 @@ const verifyPayment = async (reference: string) => {
                 </Text>
 
                 <TouchableOpacity
-                  onPress={goToMyBookings}
+                  onPress={() => router.navigate({
+                    pathname: "/(tabs)/MyBookings",
+                    params: {boatId: boatId}
+                  })}
                   style={{ backgroundColor: '#1A1A1A', borderRadius: 26.16, padding: 15, marginBottom: 10, marginTop: 20 }}
                 >
                   <Text style={{ fontFamily: 'Inter_500Medium', fontWeight: "500", fontSize:12, color: 'white', textAlign:"center" }}>View Booking</Text>

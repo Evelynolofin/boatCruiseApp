@@ -457,15 +457,7 @@ export default function BookingDetails() {
           value={new Date(booking.createdAt).toDateString()}
         />
       </View>
-{/* 
-      <TouchableOpacity style={styles.cancelBtn}
-        onPress={() => cancelBooking(booking._id)}
-        disabled={booking.paymentStatus === "CANCELLED"}
-      >
-        <Text style={styles.cancelText}>
-          {booking.paymentStatus === "CANCELLED" ? "Booking Cancelled" : "Cancel Booking"}
-        </Text>
-      </TouchableOpacity> */}
+      
       {booking.paymentStatus !== "CANCELLED" && booking.paymentStatus !== "failed" && (
         <TouchableOpacity
           style={styles.cancelBtn}

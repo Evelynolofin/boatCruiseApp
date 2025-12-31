@@ -441,7 +441,7 @@ export default function YachtDetails() {
 
 const styles = StyleSheet.create({
   navBar: {
-    height: 90,
+    height: 70,
     backgroundColor: "#1A1A1A",
     paddingHorizontal: 16,
     flexDirection: "row",
