@@ -226,7 +226,7 @@ if (!fontsLoaded){
                             style={styles.button}
                             onPress={() =>
                             router.push({
-                                pathname: "/(tabs)/YachtDetails",
+                                pathname: "/YachtDetails",
                                 params: { boatId: b._id },
                             })
                             }

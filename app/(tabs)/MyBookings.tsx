@@ -79,16 +79,28 @@ export default function MyBookings() {
   const now = Date.now();
 
   const handleLogout = async () => {
-    try {
-      await AsyncStorage.removeItem("token");
-      await AsyncStorage.removeItem("user");
-      delete httpClient.defaults.headers.common["Authorization"];
-      setProfile(false);
-      router.replace("/auth/Login");
-    } catch (error) {
-      console.error("Logout failed", error);
-    }
-  };
+  try {
+    const keysToRemove = [
+      "token",
+      "user",
+      "userName",
+      "userEmail",
+      "userPhone",
+      "userRole",
+    ];
+
+    await AsyncStorage.multiRemove(keysToRemove);
+
+    delete httpClient.defaults.headers.common["Authorization"];
+
+    setProfile(false);
+
+    router.replace("/auth/Login");
+  } catch (error) {
+    console.error("Logout failed", error);
+  }
+};
+
 
   const getMyBookings = async () => {
     try {
@@ -124,29 +136,15 @@ export default function MyBookings() {
     const createdTime = new Date(b.createdAt).getTime();
     const age = now - createdTime;
 
+    const isPaid = b.paymentStatus === "paid" || b.paymentStatus === "success";
 
-    const isPaid =
-      b.paymentStatus === "paid" || b.paymentStatus === "success";
-
-    if (!isPaid && age > TWO_HOURS) {
-      past.push({
-        ...b,
-        paymentStatus: "cancelled",
-      });
-      return;
-    }
-
-    if (isPaid && endTime > now) {
+    if (isPaid) {
+      (endTime > now ? upcoming : past).push(b);
+    } else if (age > TWO_HOURS) {
+      past.push({ ...b, paymentStatus: "cancelled" });
+    } else {
       upcoming.push(b);
-      return;
     }
-
-    if (!isPaid && age <= TWO_HOURS) {
-      upcoming.push(b);
-      return;
-    }
-
-    past.push(b);
   });
 
   return { upcomingBookings: upcoming, pastBookings: past };
@@ -154,6 +152,7 @@ export default function MyBookings() {
 
 const filteredBookings =
   activeTab === "upcoming" ? upcomingBookings : pastBookings;
+
 
   return (
     <View style={styles.container}>
@@ -237,7 +236,7 @@ const filteredBookings =
                     ]}
                     >
                         <TouchableOpacity
-                        onPress={() => router.navigate("/(tabs)/UserProfile")}
+                        onPress={() => router.navigate("/UserProfile")}
                         >
                         <Text style={{fontSize: 16, marginVertical: 10,}}>
                             Profile
@@ -339,7 +338,7 @@ const BookingCard = ({ booking }: { booking: Booking }) => {
         }}
         onPress={() =>
           router.push({
-            pathname: "/(tabs)/BookingDetails",
+            pathname: "/BookingDetails",
             params: { id: booking._id },
           })
         }

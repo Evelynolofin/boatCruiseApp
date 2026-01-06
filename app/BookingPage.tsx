@@ -274,25 +274,22 @@ export default function BookingPage(){
 
 const handleLogout = async () => {
   try {
-    console.log("Starting logout...");
+    const keysToRemove = [
+      "token",
+      "user",
+      "userName",
+      "userEmail",
+      "userPhone",
+      "userRole",
+    ];
 
-    await removeToken();
-    console.log("Token removed successfully");
-
-    await AsyncStorage.removeItem("user");
-    console.log("User data removed successfully");
+    await AsyncStorage.multiRemove(keysToRemove);
 
     delete httpClient.defaults.headers.common["Authorization"];
-    console.log("Authorization header cleared");
 
     setProfile(false);
-    console.log("Profile state set to false");
 
     router.replace("/auth/Login");
-    console.log("Redirected to login page");
-    
-    console.log("Logout completed successfully");
-
   } catch (error) {
     console.error("Logout failed", error);
   }
@@ -1161,27 +1158,25 @@ const verifyPayment = async (reference: string) => {
             )}
 
             {paystackUrl && (
-  <WebView
-    ref={webViewRef}
-    source={{ uri: paystackUrl }}
-    javaScriptEnabled
-    domStorageEnabled
-    startInLoadingState
-    onShouldStartLoadWithRequest={(request) => {
-      const { url } = request;
+              <WebView
+                ref={webViewRef}
+                source={{ uri: paystackUrl }}
+                javaScriptEnabled
+                domStorageEnabled
+                startInLoadingState
+                onShouldStartLoadWithRequest={(request) => {
+                  const { url } = request;
+                  if (url.includes("callback") || url.includes("reference=")) {
+                    setPaystackUrl(null); 
+                    verifyPayment(extractReference(url));
+                    return false;
+                  }
 
-      // 🚫 BLOCK Paystack redirect completely
-      if (url.includes("callback") || url.includes("reference=")) {
-        setPaystackUrl(null); // close WebView
-        verifyPayment(extractReference(url));
-        return false; // ⛔ PREVENT navigation
-      }
-
-      return true; // allow Paystack pages
-    }}
-    style={{ flex: 1 }}
-  />
-)}
+                  return true;
+                }}
+                style={{ flex: 1 }}
+              />
+            )}
             {showSuccess && 
               <Modal isVisible={showSuccess}>
               <View style={styles.modalCard}>

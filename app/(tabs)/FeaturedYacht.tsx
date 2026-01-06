@@ -147,27 +147,24 @@ export default function FeaturedYachts() {
     },
   ];
 
-  const handleLogout = async () => {
+const handleLogout = async () => {
   try {
-    console.log("Starting logout...");
+    const keysToRemove = [
+      "token",
+      "user",
+      "userName",
+      "userEmail",
+      "userPhone",
+      "userRole",
+    ];
 
-    await removeToken();
-    console.log("Token removed successfully");
-
-    await AsyncStorage.removeItem("user");
-    console.log("User data removed successfully");
+    await AsyncStorage.multiRemove(keysToRemove);
 
     delete httpClient.defaults.headers.common["Authorization"];
-    console.log("Authorization header cleared");
 
     setProfile(false);
-    console.log("Profile state set to false");
 
     router.replace("/auth/Login");
-    console.log("Redirected to login page");
-    
-    console.log("Logout completed successfully");
-
   } catch (error) {
     console.error("Logout failed", error);
   }
@@ -325,7 +322,7 @@ const viewDetails = async (boatId: string) => {
                     ]}
                     >
                         <TouchableOpacity
-                          onPress={() => router.navigate("/(tabs)/UserProfile")}
+                          onPress={() => router.navigate("/UserProfile")}
                         >
                           <Text style={{fontSize: 16, marginVertical: 10,}}>
                             Profile
@@ -474,7 +471,7 @@ const viewDetails = async (boatId: string) => {
                           style={styles.button}
                           onPress={() =>
                             router.push({
-                              pathname: "/(tabs)/YachtDetails",
+                              pathname: "/YachtDetails",
                               params: { boatId: b._id },
                             })
                           }

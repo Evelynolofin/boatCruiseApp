@@ -95,20 +95,11 @@ export default function BookingDetails() {
 
   const handleLogout = async () => {
     try {
-      console.log("Starting logout...");
-  
       await removeToken();
-  
-      await AsyncStorage.removeItem("user");
-  
+      await AsyncStorage.multiRemove(["user", "userName", "userEmail", "userPhone"]);
       delete httpClient.defaults.headers.common["Authorization"];
-  
       setProfile(false);
-  
       router.replace("/auth/Login");
-      
-      console.log("Logout completed successfully");
-  
     } catch (error) {
       console.error("Logout failed", error);
     }

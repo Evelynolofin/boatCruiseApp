@@ -67,25 +67,22 @@ export default function YachtDetails() {
 
   const handleLogout = async () => {
   try {
-    console.log("Starting logout...");
+    const keysToRemove = [
+      "token",
+      "user",
+      "userName",
+      "userEmail",
+      "userPhone",
+      "userRole",
+    ];
 
-    await AsyncStorage.removeItem("token");
-    console.log("Token removed successfully");
-
-    await AsyncStorage.removeItem("user");
-    console.log("User data removed successfully");
+    await AsyncStorage.multiRemove(keysToRemove);
 
     delete httpClient.defaults.headers.common["Authorization"];
-    console.log("Authorization header cleared");
 
     setProfile(false);
-    console.log("Profile state set to false");
 
     router.replace("/auth/Login");
-    console.log("Redirected to login page");
-    
-    console.log("Logout completed successfully");
-
   } catch (error) {
     console.error("Logout failed", error);
   }
@@ -372,7 +369,7 @@ export default function YachtDetails() {
                             <TouchableOpacity
                             onPress={() =>
                                 router.push({
-                                    pathname: "/(tabs)/BookingPage",
+                                    pathname: "/BookingPage",
                                     params: { boatId: boat._id },
                                 })
                                 }
