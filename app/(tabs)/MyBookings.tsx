@@ -18,11 +18,15 @@ import Modal from "react-native-modal";
 import { useRouter } from "expo-router";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { removeToken } from "@/constants/tokenFile";
 
 interface Booking {
   _id: string;
   boatId: string;
-  boatName?: string;
+  boat?: {
+    boatName: string;
+    _id: string;
+  };
   startDate: string;
   endDate: string;
   numberOfGuest: number;
@@ -80,16 +84,18 @@ export default function MyBookings() {
 
   const handleLogout = async () => {
   try {
-    const keysToRemove = [
+    await removeToken();
+
+    await AsyncStorage.multiRemove([
       "token",
       "user",
       "userName",
       "userEmail",
       "userPhone",
-      "userRole",
-    ];
-
-    await AsyncStorage.multiRemove(keysToRemove);
+      "bookings",
+      "myBookings",
+      "paymentReference",
+    ]);
 
     delete httpClient.defaults.headers.common["Authorization"];
 
@@ -102,6 +108,7 @@ export default function MyBookings() {
 };
 
 
+
   const getMyBookings = async () => {
     try {
       setLoadingBookings(true);
@@ -110,7 +117,7 @@ export default function MyBookings() {
         res.data?.data || res.data?.bookings || res.data || [];
       setMyBookings(bookings);
     } catch {
-      Alert.alert("Error", "Failed to load bookings");
+      
     } finally {
       setLoadingBookings(false);
     }
@@ -126,38 +133,67 @@ export default function MyBookings() {
     setRefreshing(false);
   };
 
+
   const { upcomingBookings, pastBookings } = useMemo(() => {
-  const upcoming: Booking[] = [];
-  const past: Booking[] = [];
+    const now = Date.now();
+    const upcoming: Booking[] = [];
+    const past: Booking[] = [];
 
-  myBookings.forEach((b) => {
-    const startTime = new Date(b.startDate).getTime();
-    const endTime = new Date(b.endDate).getTime();
-    const createdTime = new Date(b.createdAt).getTime();
-    const age = now - createdTime;
+    myBookings.forEach((booking) => {
+      const endTime = new Date(booking.endDate).getTime();
+      const createdTime = new Date(booking.createdAt).getTime();
+      const timeSinceCreation = now - createdTime;
+      
+      const status = booking.paymentStatus?.toUpperCase();
 
-    const isPaid = b.paymentStatus === "paid" || b.paymentStatus === "success";
-
-    if (isPaid) {
-      (endTime > now ? upcoming : past).push(b);
-    } else if (age > TWO_HOURS) {
-      past.push({ ...b, paymentStatus: "cancelled" });
-    } else {
-      upcoming.push(b);
+      if (status === "SUCCESSFUL") {
+      if (booking.refund) {
+        past.push({ ...booking, paymentStatus: "CANCELLED" });
+      } else if (endTime > now) {
+        upcoming.push(booking);
+      } else {
+        past.push({ ...booking, paymentStatus: "COMPLETED" });
+      }
     }
-  });
+      else if (status === "CANCELLED") {
+        past.push(booking);
+      }
+      else if (status === "PENDING" || status === "FAILED") {
+        if (timeSinceCreation > TWO_HOURS) {
+          past.push({ ...booking, paymentStatus: "CANCELLED" });
+        } else if (endTime <= now) {
+          past.push(booking);
+        } else {
+          upcoming.push(booking);
+        }
+      }
+      else {
+        if (endTime > now) {
+          upcoming.push(booking);
+        } else {
+          past.push(booking);
+        }
+      }
+    });
 
-  return { upcomingBookings: upcoming, pastBookings: past };
-}, [myBookings, now]);
+    upcoming.sort((a, b) => 
+      new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+    );
 
-const filteredBookings =
-  activeTab === "upcoming" ? upcomingBookings : pastBookings;
+    past.sort((a, b) => 
+      new Date(b.endDate).getTime() - new Date(a.endDate).getTime()
+    );
+
+    return { upcomingBookings: upcoming, pastBookings: past };
+  }, [myBookings]);
+
+  const filteredBookings = activeTab === "upcoming" ? upcomingBookings : pastBookings;
 
 
   return (
+    <>
+    <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
     <View style={styles.container}>
-      <StatusBar translucent backgroundColor="transparent" />
-
       <View style={styles.navBar}>
         <View style={{flexDirection:'row', gap: 5, alignItems:'center', paddingTop: 20}}>
             <Image
@@ -309,25 +345,79 @@ const filteredBookings =
         />
       )}
     </View>
+    </>
   );
 }
 
 const BookingCard = ({ booking }: { booking: Booking }) => {
   const router = useRouter();
 
+  const statusStyles = (status?: string) =>{
+    const statusUpper = status?.toUpperCase();
+    switch (statusUpper) {
+      case "SUCCESSFUL":
+        return{backgroundColor: "#4CAF50", color: "#FFF"}
+      case "COMPLETED":
+        return { backgroundColor: "#2196F3", color: "#FFF" }
+      case "PENDING":
+        return { backgroundColor: "#FF9800", color: "#FFF" }
+      case "CANCELLED":
+        return { backgroundColor: "#F44336", color: "#FFF" }
+      case "FAILED":
+        return { backgroundColor: "#9E9E9E", color: "#FFF" }
+      default:
+        return { backgroundColor: "#E0E0E0", color: "#333" }
+    }
+  }
+
+  const statusStyle = statusStyles(booking.paymentStatus)
+
+
   return (
+    <>
     <View style={styles.bookingCard}>
-      <Text style={styles.occasion}>{booking.occasion}</Text>
-      <Text>{booking.boatName}</Text>
-      <Text>
-        {new Date(booking.startDate).toLocaleDateString()} •{" "}
-        {new Date(booking.startDate).toLocaleTimeString()} -{" "}
-        {new Date(booking.endDate).toLocaleTimeString()}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+        <Text style={styles.occasion}>{booking.occasion}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: statusStyle.backgroundColor }]}>
+          <Text style={[styles.statusText, { color: statusStyle.color }]}>
+            {booking.paymentStatus?.toUpperCase()}
+          </Text>
+        </View>
+      </View>
+
+      <Text style={{fontSize: 15,fontWeight: 500, marginVertical: 15}}>
+        {booking.boat?.boatName }
       </Text>
-      <Text>Status: {booking.paymentStatus?.toUpperCase()}</Text>
-
+      
+      <View>
+        <View style={styles.TimeRow}>
+          <Ionicons name="calendar-outline" size={14} color="#666" />
+          <Text style={styles.TimeText}>
+            {new Date(booking.startDate).toLocaleDateString()}
+          </Text>
+        </View>
         
+        <View style={styles.TimeRow}>
+          <Ionicons name="time-outline" size={14} color="#666" />
+          <Text style={styles.TimeText}>
+            {new Date(booking.startDate).toLocaleTimeString([], { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })} - {new Date(booking.endDate).toLocaleTimeString([], { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })}
+          </Text>
+        </View>
+      </View>
 
+      {booking.paymentReference && (
+        <Text
+          style={{fontSize: 13, color: "#666", marginTop: 8, marginBottom: 12,}}
+        >
+          Ref: {booking.paymentReference}
+        </Text>
+      )}
       <TouchableOpacity
         style={{
           backgroundColor: "#1A1A1A",
@@ -356,6 +446,7 @@ const BookingCard = ({ booking }: { booking: Booking }) => {
         </Text>
       </TouchableOpacity>
     </View>
+    </>
   );
 };
 
@@ -436,6 +527,29 @@ const styles = StyleSheet.create({
     marginBottom: 16, 
     elevation: 3 
 },
+
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+
+  statusText: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+
+  TimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginVertical: 3
+  },
+
+  TimeText: {
+    fontSize: 13,
+    color: "#666",
+  },
 
   occasion: { 
     fontSize: 16, 

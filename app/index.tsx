@@ -25,7 +25,7 @@ export default function onboarding (){
          if (!ShownSplash){
             ShownSplash = true
             
-            await new Promise(resolve => setTimeout(resolve, 7000));
+            await new Promise(resolve => setTimeout(resolve, 3000));
         } 
         setLoading(true)
         await SplashScreen.hideAsync();

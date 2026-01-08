@@ -14,10 +14,6 @@ import {
   View,
 } from "react-native";
 
-interface LoginPayload {
-  email: string;
-  password: string;
-}
 
 export default function login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -28,23 +24,6 @@ export default function login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const goToBookingPage = () => {
-    router.push({
-      pathname: "/(tabs)/BookingPage",
-      params: {
-        email,
-      },
-    });
-  };
-
-  const user = () => {
-    router.push({
-      pathname: "/(tabs)/BookingPage",
-      params: {
-        email: email,
-      },
-    });
-  };
 
   const handleLogin = async () => {
     setLoading(true);
@@ -73,6 +52,31 @@ export default function login() {
 
       console.log("LOGIN SUCCESS:", res.data);
 
+      const savedBookingString = await AsyncStorage.getItem("pendingBooking")
+
+      if (savedBookingString){
+        const pendingBooking = JSON.parse(savedBookingString);
+
+        if (pendingBooking?.isGuest) {
+          setLoading(false)
+
+          router.push({
+            pathname: "/BookingPage",
+            params:{
+              boatId: pendingBooking.boatId,
+              selectedDate: pendingBooking.selectedDate,
+              startTime: pendingBooking.startTime,
+              endTime: pendingBooking.endTime,
+              occasion: pendingBooking.occasion,
+              guest: pendingBooking.guest,
+              specialRequest: pendingBooking.specialRequest || "",
+              resumeBooking: "true",
+            },
+          });
+          return
+        }
+      }
+
       setLoading(false);
 
       router.navigate("/(tabs)/HomePage");
@@ -80,18 +84,10 @@ export default function login() {
       setLoading(false);
 
       if (axios.isAxiosError(err)) {
-        console.log("LOGIN ERROR:", err.response?.data || err.message);
-
-        if (err.response?.data?.message) {
-          setError(err.response.data.message);
-        } else {
-          setError("Login failed. Try again");
-        }
+        setError(err.response?.data?.message || "Login failed. Try again");
       } else if (err instanceof Error) {
-        console.log("LOGIN ERROR:", err.message);
         setError(err.message);
       } else {
-        console.log("LOGIN ERROR: Unknown error");
         setError("Login failed. Try again");
       }
     }

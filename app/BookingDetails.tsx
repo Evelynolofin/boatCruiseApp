@@ -94,16 +94,29 @@ export default function BookingDetails() {
   const [loading, setLoading] = useState(true);
 
   const handleLogout = async () => {
-    try {
-      await removeToken();
-      await AsyncStorage.multiRemove(["user", "userName", "userEmail", "userPhone"]);
-      delete httpClient.defaults.headers.common["Authorization"];
-      setProfile(false);
-      router.replace("/auth/Login");
-    } catch (error) {
-      console.error("Logout failed", error);
-    }
-  };
+  try {
+    await removeToken();
+
+    await AsyncStorage.multiRemove([
+      "token",
+      "user",
+      "userName",
+      "userEmail",
+      "userPhone",
+      "bookings",
+      "myBookings",
+      "paymentReference",
+    ]);
+
+    delete httpClient.defaults.headers.common["Authorization"];
+
+    setProfile(false);
+
+    router.replace("/auth/Login");
+  } catch (error) {
+    console.error("Logout failed", error);
+  }
+};
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -130,13 +143,20 @@ export default function BookingDetails() {
     return null;
   }, [boat]);
 
+  const canCancelBooking = useMemo (() =>{
+    if (!booking?.paymentStatus) return false;
+
+    const status = booking.paymentStatus.toUpperCase();
+    return status === "SUCCESSFUL"
+  }, [booking?.paymentStatus])
+
   if (loading) {
     return <ActivityIndicator style={{ marginTop: 40 }} size="large" />;
   }
 
   if (!booking) {
     return (
-      <View style={{}}>
+      <View>
         <Text>Booking not found</Text>
       </View>
     );
@@ -160,14 +180,12 @@ export default function BookingDetails() {
             refund: refund,
             totalPrice: updatedBooking.totalPrice,
           }));
-
           },
         },
         { text: "Cancel", style: "cancel" },
       ]
     );
   } catch (error) {
-    console.error(error);
     Alert.alert("Error", "Failed to cancel booking. Try again.");
   }
 };
@@ -175,8 +193,9 @@ export default function BookingDetails() {
 
 
   return (
+    <>
+    <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
     <ScrollView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
       <View style={styles.navBar}>
         <View style={{flexDirection:'row', gap: 5, alignItems:'center', paddingTop: 20}}>
             <Image
@@ -209,7 +228,7 @@ export default function BookingDetails() {
                       <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => router.navigate('/(tabs)/BookingDetails')}
+                    onPress={() => router.navigate('/BookingDetails')}
                   >
                       <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
                         My bookings
@@ -255,7 +274,7 @@ export default function BookingDetails() {
                     ]}
                   >
                     
-                    <TouchableOpacity onPress={() => router.navigate("/(tabs)/UserProfile")}>
+                    <TouchableOpacity onPress={() => router.navigate("/UserProfile")}>
                       <Text style={{fontSize: 16, marginVertical: 10,}}>Profile</Text>
                     </TouchableOpacity>
                     <TouchableOpacity>
@@ -419,7 +438,13 @@ export default function BookingDetails() {
         </View>
         <View style={[styles.row, {alignItems:'center'}]}>
           <Text style={[styles.text, {padding:5}]}>Payment Status:</Text>
-          <Text style={{backgroundColor:'#9d7180', borderRadius: 12, padding:5, color:'white', fontSize: 10, }}>
+          <Text style={{
+            backgroundColor:
+              booking.paymentStatus === "SUCCESSFUL" ? '#4CAF50' :
+              booking.paymentStatus === "PENDING" ? '#FF9800' :
+              booking.paymentStatus === "CANCELLED" ? '#F44336' :
+              '#9d7180',
+            borderRadius: 12, padding:5, color:'white', fontSize: 10, }}>
             {booking.paymentStatus?.toUpperCase()}
           </Text>
         </View>
@@ -447,22 +472,43 @@ export default function BookingDetails() {
           label="BOOKED ON"
           value={new Date(booking.createdAt).toDateString()}
         />
+        <Text style={{ fontSize: 14, fontWeight: "500", color: "#1A1A1A" }}>
+          {new Date(booking.createdAt).toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })}
+        </Text>
       </View>
-      
-      {booking.paymentStatus !== "CANCELLED" && booking.paymentStatus !== "failed" && (
+
+      {canCancelBooking && (
         <TouchableOpacity
           style={styles.cancelBtn}
           onPress={() => cancelBooking(booking._id)}
-          disabled={booking.paymentStatus==="CANCELLED"}
         >
-          <Text style={styles.cancelText}>
-            {booking.paymentStatus === "CANCELLED" ? "Booking Cancelled" : "Cancel Booking"}
-          </Text>
+          <Text style={styles.cancelText}>Cancel Booking</Text>
         </TouchableOpacity>
+      )}
+
+      {!canCancelBooking && booking.paymentStatus && (
+        <View style={styles.infoBox}>
+          <Ionicons name="information-circle-outline" size={20} color="#666"/>
+          <Text style={styles.infoText}>
+            {booking.paymentStatus.toUpperCase() === "CANCELLED"
+            ?"This booking has been cancelled"
+            : booking.paymentStatus.toUpperCase() === "PENDING"
+            ?"Payment is pending. Complete payment to manage this booking"
+            : booking.paymentStatus.toUpperCase() === "FAILED"
+            ?"Payment failed. This booking has be cancelled"
+            : "This booking has be cancelled"
+          }
+          </Text>
+        </View>
       )}
 
       <View style={{ height: 40 }} />
     </ScrollView>
+    </>
   );
 }
 
@@ -646,6 +692,24 @@ const styles = StyleSheet.create({
     color: "#FF3B30",
     textAlign: "center",
     fontWeight: "600",
+  },
+
+  infoBox: {
+    marginTop: 20,
+    marginHorizontal: 16,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 12,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+
+  infoText: {
+    flex: 1,
+    color: "#666",
+    fontSize: 13,
+    lineHeight: 18,
   },
 });
 
