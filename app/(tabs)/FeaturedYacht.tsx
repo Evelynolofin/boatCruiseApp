@@ -149,16 +149,18 @@ export default function FeaturedYachts() {
 
 const handleLogout = async () => {
   try {
-    const keysToRemove = [
+    await removeToken();
+
+    await AsyncStorage.multiRemove([
       "token",
       "user",
       "userName",
       "userEmail",
       "userPhone",
-      "userRole",
-    ];
-
-    await AsyncStorage.multiRemove(keysToRemove);
+      "bookings",
+      "myBookings",
+      "paymentReference",
+    ]);
 
     delete httpClient.defaults.headers.common["Authorization"];
 
@@ -213,7 +215,7 @@ const handleLogout = async () => {
   
     const goToBooking = (boat: Boat) =>{
       router.push({
-        pathname: ("/(tabs)/BookingPage"),
+        pathname: ("/BookingPage"),
           params: {
             boatId: boat._id,
           pricePerHour: String(boat.pricePerHour),

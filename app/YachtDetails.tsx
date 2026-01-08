@@ -16,6 +16,7 @@ import Modal from "react-native-modal";
 import { router, useLocalSearchParams } from "expo-router";
 import { httpClient } from "@/constants/httpClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { removeToken } from "@/constants/tokenFile";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const PANEL_WIDTH = SCREEN_WIDTH * 0.4;
@@ -67,16 +68,18 @@ export default function YachtDetails() {
 
   const handleLogout = async () => {
   try {
-    const keysToRemove = [
+    await removeToken();
+
+    await AsyncStorage.multiRemove([
       "token",
       "user",
       "userName",
       "userEmail",
       "userPhone",
-      "userRole",
-    ];
-
-    await AsyncStorage.multiRemove(keysToRemove);
+      "bookings",
+      "myBookings",
+      "paymentReference",
+    ]);
 
     delete httpClient.defaults.headers.common["Authorization"];
 
@@ -126,9 +129,8 @@ export default function YachtDetails() {
 
   return (
     <>
+    <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <ScrollView style={{ backgroundColor: "#F8F8F8" }}>
-        <StatusBar barStyle="light-content" translucent />
-
         <View style={styles.navBar}>
             <View style={{flexDirection:'row', gap: 5, alignItems:'center', paddingTop:20}}>
                 <Image
@@ -207,7 +209,7 @@ export default function YachtDetails() {
                       ]}
                     >
                       <Text style={{fontSize: 16, marginBottom: 10}}
-                        onPress={() => router.navigate("/(tabs)/UserProfile")}
+                        onPress={() => router.navigate("/UserProfile")}
                       >
                         Profile
                       </Text>

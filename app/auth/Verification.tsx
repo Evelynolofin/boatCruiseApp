@@ -94,7 +94,7 @@ export default function Verification(){
                 text: "OK",
                 onPress: () =>
                   router.push({
-                    pathname: "/(tabs)/HomePage",
+                    pathname: "/auth/Login",
                     params: { token: response.data.token },
                   }),
               },

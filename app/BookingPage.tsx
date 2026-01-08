@@ -25,9 +25,6 @@ import * as WebBrowser from 'expo-web-browser';
 import { getToken, removeToken } from "@/constants/tokenFile";
 import axios from "axios";
 
-type UserParams ={
-  email?: string,
-}
 
 type Media = {
   url: string;
@@ -45,6 +42,17 @@ type Boat = {
   companyName: string;
   image: string;
   media?: Media[];
+};
+
+type UserParams = {
+  email?: string,
+  resumeBooking?: string;
+  selectedDate?: string;
+  startTime?: string;
+  endTime?: string;
+  guest?: string;
+  occasion?: string;
+  specialRequest?: string;
 };
 
 const BOAT_ID = "69445fc8fe4ff64c16f382be";
@@ -134,8 +142,6 @@ export default function BookingPage(){
 
     const [userEmail, setUserEmail] = useState<string | null>(null);
 
-    const [user, setUser] = useState(null);
-
     useEffect(() => {
       AsyncStorage.getItem("userEmail").then((email) => {
         setUserEmail(email);
@@ -183,6 +189,15 @@ export default function BookingPage(){
     const [showSuccess, setShowSuccess] = useState(false);
     const [showStartDropdown, setShowStartDropdown] = useState(false);
     const [showEndDropdown, setShowEndDropdown] = useState(false);
+    const [editingRestoredBooking, setEditingRestoredBooking] = useState(false);
+
+    const [isVerifying, setIsVerifying] = useState(false);
+    const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
+
+    
+    const [bookedSlots, setBookedSlots] = useState<
+      { start: string; end: string }[]
+    >([]);
 
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(false);
@@ -214,9 +229,7 @@ export default function BookingPage(){
             setLoading(true);
            const res = await httpClient.get(`/boats/${id}`);
             const boatData = res.data?.data || res.data;
-            console.log("boatId param:", boatId);
-            console.log("using id:", id);
-
+  
             setBoat(boatData);
           } catch (err) {
             Alert.alert("Error", "Failed to load boat price");
@@ -253,7 +266,7 @@ export default function BookingPage(){
     
     const goToMyBookings = () => {
     router.push({
-      pathname: "/(tabs)/BookingDetails",
+      pathname: "/BookingDetails",
         params: {
         fullName,
         email,
@@ -274,16 +287,18 @@ export default function BookingPage(){
 
 const handleLogout = async () => {
   try {
-    const keysToRemove = [
+    await removeToken();
+
+    await AsyncStorage.multiRemove([
       "token",
       "user",
       "userName",
       "userEmail",
       "userPhone",
-      "userRole",
-    ];
-
-    await AsyncStorage.multiRemove(keysToRemove);
+      "bookings",
+      "myBookings",
+      "paymentReference",
+    ]);
 
     delete httpClient.defaults.headers.common["Authorization"];
 
@@ -294,7 +309,6 @@ const handleLogout = async () => {
     console.error("Logout failed", error);
   }
 };
-
 
 
 const mainBoatImage = useMemo(() => {
@@ -314,16 +328,127 @@ useEffect(() => {
         if (savedEmail) setEmail(savedEmail);
         if (savedFullName) setFullName(savedFullName);
         if (savedPhone) setPhone(savedPhone);
-      } catch (err) {
-        console.log("Error loading user info:", err);
+
+        if (params.resumeBooking === "true") {
+          setEditingRestoredBooking(true);
+
+          if (params.selectedDate){
+            setSelectedDate(params.selectedDate as string);
+          }
+
+          if (params.startTime) {
+            const startTime = params.startTime as string;
+            const parsedStart = new Date (startTime);
+
+            if (!isNaN(parsedStart.getTime())) {
+            setStartTime(parsedStart);
+            } else {
+              console.error("Invalid startTime:", startTime);
+            }
+          }
+
+          if (params.endTime) {
+          const endTime = params.endTime as string;
+          const parsedEnd = new Date(endTime);
+          
+          if (!isNaN(parsedEnd.getTime())) {
+            setEndTime(parsedEnd);
+          } else {
+            console.error("Invalid endTime:", endTime);
+          }
+        }
+
+        if (params.guest) {
+          const guest = params.guest as string;
+          const guestNum = parseInt(guest, 10);
+          
+          if (!isNaN(guestNum) && guestNum > 0) {
+            setGuest(guestNum);
+          } else {
+            setGuest(0);
+          }
+        }
+
+        if (params.occasion) {
+          setOccassion(params.occasion as string);
+        }
+        
+        if (params.specialRequest) {
+          setSpecialRequest(params.specialRequest as string);
+        }
+        
+      } else {
+        const savedBooking = await AsyncStorage.getItem('pendingBooking');
+        if (savedBooking) {
+          const data = JSON.parse(savedBooking);
+          
+          setEditingRestoredBooking(true);
+          
+          if (data.selectedDate) setSelectedDate(data.selectedDate);
+          if (data.startTime) setStartTime(new Date(data.startTime));
+          if (data.endTime) setEndTime(new Date(data.endTime));
+          if (data.guest) {
+            const guestNum = typeof data.guest === 'string' ? parseInt(data.guest, 10) : data.guest;
+            setGuest(guestNum);
+          }
+          if (data.occasion) setOccassion(data.occasion);
+          if (data.specialRequest) setSpecialRequest(data.specialRequest || '');
+        }
       }
-    };
+    } catch (err) {
+      console.log("Error loading user info:", err);
+    }
+  };
     loadUserInfo();
-  }, []);
+}, []);
+
+
+// useEffect(() => {
+//   if (!selectedDate) return;
+
+//   setBookedSlots([
+//     { start: "10:00", end: "12:00" },
+//     { start: "15:00", end: "17:00" },
+//   ]);
+
+//   setShowStartDropdown(false);
+//   setShowEndDropdown(false);
+// }, [selectedDate]);
+
+
+// const isTimeBooked = (time: Date) => {
+//   return bookedSlots.some((slot) => {
+//     const [sh, sm] = slot.start.split(":").map(Number);
+//     const [eh, em] = slot.end.split(":").map(Number);
+
+//     const start = new Date(time);
+//     start.setHours(sh, sm || 0, 0, 0);
+
+//     const end = new Date(time);
+//     end.setHours(eh, em || 0, 0, 0);
+
+//     return time >= start && time < end;
+//   });
+// };
+
+// const isToday =
+//   selectedDate === new Date().toISOString().split("T")[0];
 
 const createBooking = async () => {
   const token = await getToken();
   if (!token) {
+    const bookingData = {
+      boatId: boatId || BOAT_ID,
+      selectedDate,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+      guest: guest.toString(),
+      occasion,
+      specialRequest,
+      isGuest: true, 
+    };
+    await AsyncStorage.setItem('pendingBooking', JSON.stringify(bookingData));
+
     Alert.alert(
       "Login required",
       "You must be logged in to make a booking.",
@@ -375,71 +500,106 @@ const createBooking = async () => {
     }
 
     setPaymentReference(paymentReference);
-    setPaystackUrl(paystackLink);
+    setLoading(false);
+
+    console.log("Opening payment URL:", paystackLink);
+    console.log("Payment reference:", paymentReference);
 
     const browserResult = await WebBrowser.openBrowserAsync(paystackLink);
+    console.log("Browser closed with result:", browserResult);
 
-    setShowSuccess(true)
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    await verifyPayment(paymentReference);
 
-    console.log("Browser result:", browserResult);
-
-    if (browserResult.type === 'dismiss' || browserResult.type === 'cancel') {
-      await verifyPayment(paymentReference);
-    }
+    await AsyncStorage.removeItem('pendingBooking');
+    setEditingRestoredBooking(false);
 
   } catch (err: any) {
-    console.error("Booking error:", err);
     Alert.alert("Error", err.response?.data?.message || err.message || "Booking failed. Please try again.");
-  } finally {
     setLoading(false);
   }
 };
 
 const verifyPayment = async (reference: string) => {
   const token = await getToken();
-  console.log({token})
+  console.log("Starting verification for reference:", reference);
+  
+  setIsVerifying(true);
+  
   try {
+    console.log("Verifying payment...");
+    
     const verifyRes = await axios.get(
       `https://internsproject.vercel.app/api/bookings/verify/${reference}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        timeout: 15000,
       }
     );
 
-    const verificationData = verifyRes.data?.data;
+    console.log("Full verification response:", JSON.stringify(verifyRes.data, null, 2));
+    
+    const verificationData = verifyRes.data?.data || verifyRes.data;
+    const status = verificationData?.status || verificationData?.data?.status;
+    const paymentStatus = verificationData?.paymentStatus || verificationData?.data?.paymentStatus;
+
+    console.log("Status:", status, "PaymentStatus:", paymentStatus);
 
     if (
-      verificationData?.status === "success" ||
-      verificationData?.paymentStatus === "paid"
+      status === "success" ||
+      paymentStatus === "paid" ||
+      status === "paid" ||
+      paymentStatus === "success"
     ) {
+      console.log("Payment verified successfully!");
+      setIsVerifying(false);
+      setShowSuccess(true);
 
-      Alert.alert(
-        "Success",
-        "Payment verified! Your booking is confirmed.",
-        [
-          {
-            text: "OK",
-            onPress: () => router.push({
-              pathname: "/(tabs)/MyBookings",
-              params: {boatId: boatId}
-            })
-            // onPress: () => router.push("/(tabs)/MyBookings"),
-          },
-        ]
-      );
-    } 
+      await AsyncStorage.removeItem("pendingBooking");
+      return true;
+    } else {
+      setIsVerifying(false);
+      setShowSuccess(true)
+      return false;
+    }
 
   } catch (err: any) {
-    console.error("Verification error:", err);
+    setIsVerifying(false);
+    
     Alert.alert(
       "Verification Error",
-      err.response?.data?.message || "Could not verify payment."
+      "Could not verify payment. Please check your bookings or contact support.",
+      [
+        {
+          text: "Check Bookings",
+          onPress: () => {
+            router.push({
+              pathname: "/(tabs)/MyBookings",
+              params: { boatId }
+            });
+          }
+        },
+        {
+          text: "OK",
+          style: "cancel"
+        }
+      ]
     );
+    return false;
   }
 };
 
+useEffect(() => {
+  if (paymentReference) {
+    console.log("=== PAYMENT DETAILS ===");
+    console.log("Reference:", paymentReference);
+    console.log("Verification URL:", `https://internsproject.vercel.app/api/bookings/verify/${paymentReference}`);
+    console.log("======================");
+  }
+}, [paymentReference]);
 
 
     return(
@@ -447,103 +607,103 @@ const verifyPayment = async (reference: string) => {
       <ScrollView style={{backgroundColor: '#F8F8F8'}}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
         <View style={styles.navBar}>
-            <View style={{flexDirection:'row', gap: 5, alignItems:'center'}}>
-                <Image
-                source={require('@/assets/images/logo.png')}
-                style={{
-                    width: 23.32,
-                    height: 23.32,
-                }}
-                />
-                <Text style={{color: 'white', fontWeight:700, fontSize: 11.66}}>
-                    BoatCruise
-                </Text>
-            </View>
+          <View style={{flexDirection:'row', gap: 5, alignItems:'center'}}>
+              <Image
+              source={require('@/assets/images/logo.png')}
+              style={{
+                  width: 23.32,
+                  height: 23.32,
+              }}
+              />
+              <Text style={{color: 'white', fontWeight:700, fontSize: 11.66}}>
+                  BoatCruise
+              </Text>
+          </View>
 
-            <View style={{flexDirection:'row', gap: 5, justifyContent:'space-between', width:64}}>
-                <TouchableOpacity onPress={() => setOpen(true)}>
-                    <Ionicons
-                    name="menu"
-                    size={24}
+          <View style={{flexDirection:'row', gap: 5, justifyContent:'space-between', width:64}}>
+              <TouchableOpacity onPress={() => setOpen(true)}>
+                  <Ionicons
+                  name="menu"
+                  size={24}
+                  color='white'
+                  />
+                  <Modal isVisible={open} onBackdropPress={() => setOpen(false)}>
+                      <View style={{ backgroundColor: "black", padding: 20, borderRadius: 10 }}>
+                      <TouchableOpacity
+                      onPress={() => router.navigate('/(tabs)/HomePage')}
+                      >
+                          <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>Home</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity>
+                          <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => router.navigate('/(tabs)/MyBookings')}
+                      >
+                          <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
+                            My bookings
+                          </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity onPress={() => setOpen(false)}>
+                          <Text style={{ color: "red", fontSize: 16, fontFamily: 'Inter_700Bold' }}>Cancel</Text>
+                      </TouchableOpacity>
+                      </View>
+                  </Modal>
+
+              </TouchableOpacity>
+
+              <View>
+                <TouchableOpacity
+                  onPress={openPanel}
+                  style={{width: 24, height: 24, borderRadius: 60, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'white'}}
+                >
+                    <Feather
+                    name="user"
+                    size={16}
                     color='white'
                     />
-                    <Modal isVisible={open} onBackdropPress={() => setOpen(false)}>
-                        <View style={{ backgroundColor: "black", padding: 20, borderRadius: 10 }}>
-                        <TouchableOpacity
-                        onPress={() => router.navigate('/(tabs)/HomePage')}
-                        >
-                            <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>Home</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity>
-                            <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => router.navigate('/(tabs)/MyBookings')}
-                        >
-                            <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
-                              My bookings
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity onPress={() => setOpen(false)}>
-                            <Text style={{ color: "red", fontSize: 16, fontFamily: 'Inter_700Bold' }}>Cancel</Text>
-                        </TouchableOpacity>
-                        </View>
-                    </Modal>
-
                 </TouchableOpacity>
 
-                <View>
-                  <TouchableOpacity
-                    onPress={openPanel}
-                    style={{width: 24, height: 24, borderRadius: 60, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'white'}}
+                {profile && (
+                  <View
+                    style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 40,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.3)',
+                    zIndex: 9,
+                  }}
                   >
-                      <Feather
-                      name="user"
-                      size={16}
-                      color='white'
-                      />
-                  </TouchableOpacity>
-
-                  {profile && (
-                    <View
-                      style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 40,
-                      right: 0,
-                      bottom: 0,
-                      backgroundColor: 'rgba(0,0,0,0.3)',
-                      zIndex: 9,
-                    }}
+                    <Animated.View
+                      style={[
+                        styles.panel,
+                        { transform: [{ translateX: slideAnim }] },
+                      ]}
                     >
-                      <Animated.View
-                        style={[
-                          styles.panel,
-                          { transform: [{ translateX: slideAnim }] },
-                        ]}
+                      <Text style={{fontSize: 16, marginBottom: 10,}}
+                        onPress={() => router.navigate("/UserProfile")}
                       >
-                        <Text style={{fontSize: 16, marginBottom: 10,}}
-                          onPress={() => router.navigate("/(tabs)/UserProfile")}
-                        >
-                          Profile
-                        </Text>
-                        <TouchableOpacity>
-                          <Text style={{fontSize: 16, marginVertical: 10,}}>Settings</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={handleLogout}
-                        >
-                          <Text style={{fontSize: 16, marginVertical: 10,}}>Logout</Text>
-                        </TouchableOpacity>
+                        Profile
+                      </Text>
+                      <TouchableOpacity>
+                        <Text style={{fontSize: 16, marginVertical: 10,}}>Settings</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={handleLogout}
+                      >
+                        <Text style={{fontSize: 16, marginVertical: 10,}}>Logout</Text>
+                      </TouchableOpacity>
 
-                        <TouchableOpacity onPress={closePanel}>
-                          <Text style={{marginTop: 30, color: "red", fontWeight: "bold",}}>Close</Text>
-                        </TouchableOpacity>
-                      </Animated.View>
-                    </View>
-                  )}
-                </View>
+                      <TouchableOpacity onPress={closePanel}>
+                        <Text style={{marginTop: 30, color: "red", fontWeight: "bold",}}>Close</Text>
+                      </TouchableOpacity>
+                    </Animated.View>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
 
@@ -568,6 +728,49 @@ const verifyPayment = async (reference: string) => {
             }}>
                 Complete Your Booking
             </Text>
+
+            {editingRestoredBooking && (
+              <View style={{
+                backgroundColor: '#EFF6FF',
+                borderLeftWidth: 4,
+                borderLeftColor: '#3B82F6',
+                padding: 12,
+                marginHorizontal: 14,
+                marginVertical: 10,
+                borderRadius: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10
+              }}>
+                <Ionicons name="information-circle" size={24} color="#3B82F6" />
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    fontFamily: 'Inter_600SemiBold',
+                    fontSize: 14,
+                    color: '#1E40AF',
+                    marginBottom: 4
+                  }}>
+                    Booking Restored
+                  </Text>
+                  <Text style={{
+                    fontFamily: 'Inter_400Regular',
+                    fontSize: 12,
+                    color: '#1E3A8A'
+                  }}>
+                    You can edit any details before completing your booking
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={async () => {
+                    await AsyncStorage.removeItem('pendingBooking');
+                    setEditingRestoredBooking(false);
+                    router.replace('/(tabs)/HomePage');
+                  }}
+                >
+                  <Ionicons name="close-circle" size={24} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+            )}
 
           <View style={{flexDirection:"row", alignItems: "center",justifyContent: "space-between"}}>
           <View style={styles.stepBox}>
@@ -618,178 +821,203 @@ const verifyPayment = async (reference: string) => {
         </View>
 
       <View>
-        {step ===1 && <View>
-            <View style={styles.form}>
-              <Text style={styles.label}> Full Name </Text>
-              <TextInput
-              placeholder="Enter your full name"
-              placeholderTextColor='#787878'
-              style={styles.input}
-              // value={fullName}
-              onChangeText={setFullName}
-              returnKeyType="next"
-              onSubmitEditing={() => emailRef.current ?.focus()}
-              />
-              <Text style={styles.label}>Email address</Text>
-              <TextInput
-              
-              placeholder="example@gmail.com"
-              placeholderTextColor='#787878'
-              keyboardType="email-address"
-              style={styles.input}
-              value={email}
-              editable={false}
-              returnKeyType="next"
-              />
-              <Text style={styles.label}>Phone Number</Text>
-              <TextInput
-              placeholder="Enter your phone number"
-              placeholderTextColor='#787878'
-              keyboardType="phone-pad"
-              style={styles.input}
-              value={phone}
-              editable={false}
-              returnKeyType="next"
-              ref={phoneRef}
-              />
-              <Text style={styles.label}>Date & Time</Text>
-              <TouchableOpacity onPress={openCalendar}
-                style={styles.input}
-              >
-                <Text>
-                  Select Date
-                </Text>
-              </TouchableOpacity>
+        {step ===1 && 
+        <View>
+          <View style={styles.form}>
+            <Text style={styles.label}> Full Name </Text>
+            <TextInput
+            placeholder="Enter your full name"
+            placeholderTextColor='#787878'
+            style={styles.input}
+            // value={fullName}
+            onChangeText={setFullName}
+            returnKeyType="next"
+            onSubmitEditing={() => emailRef.current ?.focus()}
+            />
+            <Text style={styles.label}>Email address</Text>
+            <TextInput
+            
+            placeholder="example@gmail.com"
+            placeholderTextColor='#787878'
+            keyboardType="email-address"
+            style={styles.input}
+            value={email}
+            editable={false}
+            returnKeyType="next"
+            />
+            <Text style={styles.label}>Phone Number</Text>
+            <TextInput
+            placeholder="Enter your phone number"
+            placeholderTextColor='#787878'
+            keyboardType="phone-pad"
+            style={styles.input}
+            value={phone}
+            editable={false}
+            returnKeyType="next"
+            ref={phoneRef}
+            />
+            <Text style={[styles.label, { marginBottom: 4 }]}>
+              Date & Time
+            </Text>
 
-              {calendarOpen && (
-                <>
-                  <TouchableOpacity onPress={closeCalendar}>
-                  <Animated.View
-                    style={{transform: [{ translateY: slideAnim }]}}
+            <Calendar
+              style={{ marginTop: 0 }}
+              minDate={new Date().toISOString().split("T")[0]}
+              onDayPress={(day) => setSelectedDate(day.dateString)}
+              markedDates={
+                selectedDate
+                  ? { [selectedDate]: { selected: true } }
+                  : {}
+              }
+            />
+
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginTop: 6,
+                zIndex: 10,
+              }}
+            >
+              <View style={{ flex: 1, zIndex: 20 }}>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: "#f5f5f5",
+                    padding: 12,
+                    borderRadius: 8,
+                    marginVertical: 6,
+                  }}
+                  onPress={() => {
+                    setShowEndDropdown(false);
+                    setShowStartDropdown((p) => !p);
+                  }}
+                >
+                  <Text>
+                    Start Time:{" "}
+                    {startTime.toLocaleTimeString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </Text>
+                </TouchableOpacity>
+
+                {showStartDropdown && (
+                  <View
+                    style={{
+                      backgroundColor: "#fff",
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: "#ddd",
+                      maxHeight: 200,
+                      zIndex: 30,
+                      elevation: 15,
+                    }}
                   >
-                    <Calendar
-                      minDate={new Date().toISOString().split("T")[0]}
-                      onDayPress={(day) => setSelectedDate(day.dateString)}
-                      markedDates={
-                        selectedDate ? { [selectedDate]: { selected: true } } : {}
-                      }
-                    />
+                    <ScrollView nestedScrollEnabled>
+                    {timeSlots
+                      .filter((t) => Number(t.split(":")[0]) >= 8)
+                      .map((t) => {
+                        const [h, m] = t.split(":").map(Number);
+                        const candidate = new Date(startTime);
+                        candidate.setHours(h, m || 0, 0, 0);
 
-                  <View style={{flexDirection: 'row',alignItems:'center', justifyContent:'space-between'}}>
-                    <View>
-                      <TouchableOpacity
-                        style={{backgroundColor: "#f5f5f5", padding: 14, borderRadius: 8, marginVertical: 12}}
-                        onPress={() => setShowStartDropdown((p) => !p)}
-                      >
-                        <Text>
-                          Start Time:{" "}
-                          {startTime.toLocaleTimeString("en-GB", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </Text>
-                      </TouchableOpacity>
-          
-                      {showStartDropdown && (
-                        <View style={{backgroundColor: "#fff", borderRadius: 8, borderWidth: 1, 
-                          borderColor: "#ddd", marginBottom: 12}}
-                        >
-                          <ScrollView style={{ maxHeight: 200 }}>
-                        {timeSlots
-                          .filter((t) => {
-                            const [h] = t.split(":").map(Number);
-                            return h >= 8; // only show 8:00+ times
-                          })
-                          .map((t) => {
-                            const [h, m] = t.split(":").map(Number);
-                            const candidate = new Date(startTime);
-                            candidate.setHours(h, m || 0, 0, 0);
-      
-                          const isPast =
-                            selectedDate === new Date().toISOString().split("T")[0] &&
-                            candidate < new Date();
-      
-                          return (
+                        return (
                           <TouchableOpacity
                             key={t}
-                            disabled={isPast}
                             style={[
                               styles.dropdownItem,
-                              isPast && { opacity: 0.3 },
                             ]}
                             onPress={() => {
                               setStartTime(candidate);
+                              setEndTime(new Date(candidate));
                               setShowStartDropdown(false);
                             }}
                           >
-                            <Text>{t}</Text>
+                            <Text>
+                              {t}
+                            </Text>
                           </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+
+              <Text style={{ marginHorizontal: 8 }}>–</Text>
+
+              <View style={{ flex: 1, zIndex: 20 }}>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: "#f5f5f5",
+                    padding: 12,
+                    borderRadius: 8,
+                    marginVertical: 6,
+                  }}
+                  onPress={() => {
+                    setShowStartDropdown(false);
+                    setShowEndDropdown((p) => !p);
+                  }}
+                >
+                  <Text>
+                    End Time:{" "}
+                    {endTime.toLocaleTimeString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </Text>
+                </TouchableOpacity>
+
+                {showEndDropdown && (
+                  <View
+                    style={{
+                      backgroundColor: "#fff",
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: "#ddd",
+                      maxHeight: 200,
+                      zIndex: 30,
+                      elevation: 15,
+                    }}
+                  >
+                    <ScrollView nestedScrollEnabled>
+                      {timeSlots
+                        .map((t) => {
+                          const [h, m] = t.split(":").map(Number);
+                          const d = new Date(startTime);
+                          d.setHours(h, m || 0, 0, 0);
+                          return d;
+                        })
+                        .filter((d) => d > startTime)
+                        .map((candidate, idx) => {
+
+                          return (
+                            <TouchableOpacity
+                              key={idx}
+                              style={[
+                                styles.dropdownItem,
+                              ]}
+                              onPress={() => {
+                                setEndTime(candidate);
+                                setShowEndDropdown(false);
+                              }}
+                            >
+                              <Text>
+                                {candidate.toLocaleTimeString("en-GB", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </Text>
+                            </TouchableOpacity>
                           );
                         })}
-                          </ScrollView>
-                        </View>
-                      )}
-                    </View>
-
-                    <Text>-</Text>
-                    
-                    <View>
-                      <TouchableOpacity
-                      onPress={() => setShowEndDropdown((p) => !p)}
-                      style={{backgroundColor: "#f5f5f5", padding: 14, borderRadius: 8, marginVertical: 12}}
-                    >
-                      <Text>
-                        End Time:{" "}
-                        {endTime.toLocaleTimeString("en-GB", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </Text>
-                    </TouchableOpacity>
-
-                    {showEndDropdown && (
-                      <View style={{backgroundColor: "#fff", borderRadius: 8, borderWidth: 1, 
-                        borderColor: "#ddd", marginBottom: 12}}
-                      >
-                        <ScrollView style={{ maxHeight: 200 }}>
-                          {timeSlots.map((t) => {
-                            const [h] = t.split(":").map(Number);
-                            const candidate = new Date(startTime);
-                            candidate.setHours(h, 0, 0, 0);
-                            return candidate;
-                          })
-                          .filter((candidate) => candidate > startTime)
-                          .map((candidate, idx) => {
-                            const t = candidate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-                            const isPast = selectedDate === new Date().toISOString().split("T")[0] && candidate < new Date();
-                            return (
-                              <TouchableOpacity
-                                key={idx}
-                                disabled={isPast}
-                                style={[styles.dropdownItem, isPast && { opacity: 0.3 }]}
-                                onPress={() => {
-                                  setEndTime(candidate);
-                                  setShowEndDropdown(false);
-                                }}
-                              >
-                                <Text>{t}</Text>
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </ScrollView>
-                          </View>
-                        )}
-                        </View>
-                      </View>
-
-                      <TouchableOpacity style={styles.primaryBtn} onPress={closeCalendar}>
-                        <Text style={{ color: "white" }}>Done</Text>
-                      </TouchableOpacity>
-                    </Animated.View>
-                  </TouchableOpacity>
-                </>
-              )}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
             </View>
+          </View>
 
             <View style={{marginVertical: 11.32, paddingHorizontal: 10, backgroundColor: 'white', borderRadius: 11.69,
               marginHorizontal: 14, paddingVertical: 11.32, justifyContent: 'center'
@@ -1177,7 +1405,36 @@ const verifyPayment = async (reference: string) => {
                 style={{ flex: 1 }}
               />
             )}
-            {showSuccess && 
+
+            {isVerifying && (
+              <Modal isVisible={isVerifying}>
+                <View style={styles.modalCard}>
+                  <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                    <ActivityIndicator size="large" color="#1A1A1A" />
+                    <Text style={{ 
+                      marginTop: 16, 
+                      fontSize: 16,
+                      fontWeight: '600',
+                      textAlign: 'center',
+                      fontFamily: 'Inter_600SemiBold'
+                    }}>
+                      Verifying Payment
+                    </Text>
+                    <Text style={{ 
+                      marginTop: 8,
+                      fontSize: 14,
+                      color: '#666', 
+                      textAlign: 'center',
+                      fontFamily: 'Inter_400Regular' 
+                    }}>
+                      Please wait while we confirm your payment...
+                    </Text>
+                  </View>
+                </View>
+              </Modal>
+            )}
+
+            {showSuccess && paymentReference && (
               <Modal isVisible={showSuccess}>
               <View style={styles.modalCard}>
                 <View style={{ alignItems: "center" }}>
@@ -1239,8 +1496,8 @@ const verifyPayment = async (reference: string) => {
                   <Text style={{ textAlign:'center', fontFamily: 'Inter_500Medium', fontWeight: "500", fontSize:12 }}>Go back to Home</Text>
                 </TouchableOpacity>
               </View>
-            </Modal>
-            }
+              </Modal>
+            )}
                   </View>
                 </View>
             </View>}
@@ -1250,6 +1507,7 @@ const verifyPayment = async (reference: string) => {
       </>
     )
 }
+
 
 const styles= StyleSheet.create({
     navBar:{
