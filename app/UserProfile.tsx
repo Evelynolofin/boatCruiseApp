@@ -128,6 +128,7 @@ const handleChangePassword = async () => {
             />
             <TextInput
             value={email}
+            placeholder="User@gmail.com"
             editable={false}
           />
           </View>
@@ -140,6 +141,7 @@ const handleChangePassword = async () => {
             />
             <TextInput
             value={phone}
+            placeholder="User PhoneNumber"
             editable={false}
           />
           </View>

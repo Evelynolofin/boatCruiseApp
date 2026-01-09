@@ -148,10 +148,13 @@ export default function MyBookings() {
       
       const status = booking.paymentStatus?.toUpperCase();
 
+      if (status === "REFUNDED") {
+        past.push({...booking, paymentStatus: "REFUNDED"})
+        return;
+      }
+
       if (status === "SUCCESSFUL") {
-      if (booking.refund) {
-        past.push({ ...booking, paymentStatus: "CANCELLED" });
-      } else if (endTime > now) {
+       if (endTime > now) {
         upcoming.push(booking);
       } else {
         past.push({ ...booking, paymentStatus: "COMPLETED" });
@@ -227,13 +230,13 @@ export default function MyBookings() {
                     <TouchableOpacity>
                         <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
+                    {/* <TouchableOpacity
                     onPress={() => router.navigate('/(tabs)/MyBookings')}
                     >
                         <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
                         My bookings
                         </Text>
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
 
                     <TouchableOpacity onPress={() => setOpen(false)}>
                         <Text style={{ color: "red", fontSize: 16, fontFamily: 'Inter_700Bold' }}>Cancel</Text>

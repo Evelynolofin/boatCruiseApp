@@ -148,11 +148,17 @@ export default function createAccount () {
                     placeholder="Enter Phone number"
                     placeholderTextColor='#828789'
                     keyboardType="phone-pad"
+                    maxLength={11}
                     ref={phoneRef}
                     returnKeyType="next"
                     onSubmitEditing={() => passwordRef.current ?.focus()}
-                    onChangeText={(t) => {
-                        setPhoneNumber(t);
+                    onChangeText={(text) => {
+                         let cleaned = text.replace(/\D/g, "");
+                         if (cleaned.startsWith("0")) {
+                            cleaned = cleaned.slice(1);
+                         }
+                         cleaned = cleaned.slice(0, 10);
+                        setPhoneNumber(cleaned);
                         setErrors({...errors, mobile: ''})
                     }}
                     />

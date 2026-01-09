@@ -453,12 +453,12 @@ export default function BookingDetails() {
         {booking.refund && (
           <>
             <View style={styles.row}>
-              <Text>Refund Amount</Text>
-              <Text>₦{Number(booking.refund.amount).toLocaleString()}</Text>
+              <Text style={[styles.text, {padding:5}]}>Refund Amount</Text>
+              <Text style={[styles.text, {padding:5}]}>₦{Number(booking.refund.amount).toLocaleString()}</Text>
             </View>
             <View style={styles.row}>
-              <Text>Refund Percentage</Text>
-              <Text>{booking.refund.percentage}%</Text>
+              <Text style={[styles.text, {padding:5}]}>Refund Percentage</Text>
+              <Text style={[styles.text, {padding:5}]}>{booking.refund.percentage}%</Text>
             </View>
           </>
         )}
