@@ -223,20 +223,26 @@ export default function MyBookings() {
                 <Modal isVisible={open} onBackdropPress={() => setOpen(false)}>
                     <View style={{ backgroundColor: "black", padding: 20, borderRadius: 10 }}>
                     <TouchableOpacity
-                    onPress={() => router.navigate('/(tabs)/HomePage')}
+                    onPress={() => {
+                      router.navigate('/(tabs)/HomePage')
+                      setOpen(false);
+                    }}
                     >
                         <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>Home</Text>
                     </TouchableOpacity>
                     <TouchableOpacity>
                         <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
                     </TouchableOpacity>
-                    {/* <TouchableOpacity
-                    onPress={() => router.navigate('/(tabs)/MyBookings')}
+                    <TouchableOpacity
+                    onPress={() => {
+                      router.navigate('/(tabs)/MyBookings')
+                      setOpen(false);
+                    }}
                     >
                         <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
                         My bookings
                         </Text>
-                    </TouchableOpacity> */}
+                    </TouchableOpacity>
 
                     <TouchableOpacity onPress={() => setOpen(false)}>
                         <Text style={{ color: "red", fontSize: 16, fontFamily: 'Inter_700Bold' }}>Cancel</Text>

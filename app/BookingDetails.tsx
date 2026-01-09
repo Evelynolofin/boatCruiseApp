@@ -165,32 +165,51 @@ export default function BookingDetails() {
   }
 
   const cancelBooking = async (bookingId: string) => {
-  try {
-    const res = await httpClient.patch(`/bookings/${bookingId}/cancel`);
-    const { refund, booking: updatedBooking } = res.data.data;
-
     Alert.alert(
       "Cancel Booking",
-      `Refund Amount: ₦${refund.amount.toLocaleString()} \nRefund Percentage: ${refund.percentage}%`,
+      "Are you sure you want to cancel this booking? You will receive a refund based on our cancellation policy.",
       [
         {
-          text: "Proceed",
-          onPress: () => {
-            setBooking((prev: Boat | null) => ({
-            ...prev!,
-            paymentStatus: "CANCELLED",
-            refund: refund,
-            totalPrice: updatedBooking.totalPrice,
-          }));
-          },
+          text: "No, Keep Booking",
+          style: "cancel",
         },
-        { text: "Cancel", style: "cancel" },
-      ]
+        {
+          text: "Yes, Cancel Booking",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const res = await httpClient.patch(`/bookings/${bookingId}/cancel`);
+              const { refund, booking: updatedBooking } = res.data.data;
+
+              setBooking((prev: Booking | null) => ({
+                ...prev!,
+                paymentStatus: "REFUNDED",
+                refund: refund,
+              }))
+
+              Alert.alert(
+                "Booking Cancelled",
+                `Your booking has been cancelled successfully.\n\nRefund Amount: ₦${refund.amount.toLocaleString()}
+                \nRefund Percentage: ${refund.percentage}%\n\nThe refund will be processed within 5-7 business days.`,
+                [
+                  {
+                    text: "OK",
+                    onPress: () => {
+                      router.back();
+                    }
+                  }
+                ]
+              );
+            } catch (error:any) {
+              Alert.alert("Error", error.message);
+            }
+          }, 
+        }
+      ],
+
+      {cancelable: false}
     );
-  } catch (error) {
-    Alert.alert("Error", "Failed to cancel booking. Try again.");
-  }
-};
+  };
 
 
 
@@ -222,20 +241,26 @@ export default function BookingDetails() {
               <Modal isVisible={open} onBackdropPress={() => setOpen(false)}>
                   <View style={{ backgroundColor: "black", padding: 20, borderRadius: 10 }}>
                   <TouchableOpacity
-                  onPress={() => router.navigate('/(tabs)/HomePage')}
-                  >
-                      <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>Home</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity>
-                      <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => router.navigate('/BookingDetails')}
-                  >
-                      <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
-                        My bookings
-                      </Text>
-                  </TouchableOpacity>
+                    onPress={() => {
+                      router.navigate('/(tabs)/HomePage')
+                      setOpen(false);
+                    }}
+                    >
+                        <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>Home</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity>
+                        <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        router.navigate('/(tabs)/MyBookings')
+                        setOpen(false);
+                      }}
+                    >
+                        <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
+                          My bookings
+                        </Text>
+                    </TouchableOpacity>
 
                   <TouchableOpacity onPress={() => setOpen(false)}>
                       <Text style={{ color: "red", fontSize: 16, fontFamily: 'Inter_700Bold' }}>Cancel</Text>

@@ -157,19 +157,25 @@ export default function YachtDetails() {
                   <Modal isVisible={open} onBackdropPress={() => setOpen(false)}>
                       <View style={{ backgroundColor: "black", padding: 20, borderRadius: 10 }}>
                       <TouchableOpacity
-                      onPress={() => router.navigate('/(tabs)/HomePage')}
-                      >
-                          <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>Home</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity>
-                          <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => router.navigate('/(tabs)/MyBookings')}
-                      >
-                          <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
-                            My bookings
-                          </Text>
+                        onPress={() => {
+                          router.navigate('/(tabs)/HomePage')
+                          setOpen(false);
+                        }}
+                        >
+                            <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>Home</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity>
+                            <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => {
+                            router.navigate('/(tabs)/MyBookings')
+                            setOpen(false);
+                          }}
+                        >
+                            <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
+                              My bookings
+                            </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity onPress={() => setOpen(false)}>
