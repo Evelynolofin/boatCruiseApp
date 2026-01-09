@@ -9,6 +9,7 @@ import {
   Dimensions,
   Easing,
   Image,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -59,9 +60,10 @@ const BOAT_ID = "69445fc8fe4ff64c16f382be";
 
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const PANEL_WIDTH = SCREEN_WIDTH * 0.5;
+const PANEL_WIDTH = SCREEN_WIDTH * 0.4;
 const PANEL_HEIGHT = 215;
 const { height } = Dimensions.get("window");
+const STATUS_BAR_HEIGHT = Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0
 
 const generateHourSlots = () => {
   const slots: string[] = [];
@@ -306,7 +308,7 @@ const handleLogout = async () => {
 
     router.replace("/auth/Login");
   } catch (error) {
-    console.error("Logout failed", error);
+    // console.error("Logout failed", error);
   }
 };
 
@@ -669,10 +671,9 @@ useEffect(() => {
                   <View
                     style={{
                     position: 'absolute',
-                    top: 0,
-                    left: 40,
-                    right: 0,
-                    bottom: 0,
+                    top: -(STATUS_BAR_HEIGHT + 10),
+                    left: -SCREEN_WIDTH + 40,
+                    width: SCREEN_WIDTH,
                     backgroundColor: 'rgba(0,0,0,0.3)',
                     zIndex: 9,
                   }}
@@ -1176,6 +1177,8 @@ useEffect(() => {
               <Text style={styles.label}>Special Request (optional)</Text>
                   <TextInput
                     placeholder="Any special request or requirement"
+                    value={specialRequest}
+                    onChangeText={(text) => setSpecialRequest(text)}
                     style={[styles.input, {height: 67.69}]}
                     
                   />
@@ -1510,19 +1513,20 @@ useEffect(() => {
 
 
 const styles= StyleSheet.create({
-    navBar:{
-        backgroundColor:'#1A1A1A',
-        height: 70,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 10,
-    },
+  navBar:{
+    backgroundColor:'#1A1A1A',
+    height: 50 + STATUS_BAR_HEIGHT,
+    paddingTop: STATUS_BAR_HEIGHT,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
 
-    panel: {
+  panel: {
     position: "absolute",
     right: 0,
-    top: 0,
+    top: STATUS_BAR_HEIGHT + 10,
     width: PANEL_WIDTH,
     backgroundColor: "#fff",
     padding: 20,
@@ -1532,37 +1536,37 @@ const styles= StyleSheet.create({
     shadowRadius: 6,
     borderBottomLeftRadius:7,
     borderTopLeftRadius:7
-    },
+  },
 
-    form:{
-        paddingHorizontal: 20,
-        backgroundColor: 'white', 
-        borderRadius: 4.53, 
-        marginHorizontal: 14,
-        paddingVertical: 6.79,
-        paddingBottom: 20,
-        marginTop: 20
-    },
+  form:{
+    paddingHorizontal: 20,
+    backgroundColor: 'white', 
+    borderRadius: 4.53, 
+    marginHorizontal: 14,
+    paddingVertical: 6.79,
+    paddingBottom: 20,
+    marginTop: 20
+  },
 
-    label:{
-        color: '#0A0A0A', 
-        fontSize: 12, 
-        fontFamily: 'Inter_400Regular',
-        lineHeight: 13.58,
-        marginTop: 16,
-        fontWeight: 700,
-    },
+  label:{
+    color: '#0A0A0A', 
+    fontSize: 12, 
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 13.58,
+    marginTop: 16,
+    fontWeight: 700,
+  },
 
-    input:{
-        borderRadius: 4.53,
-        gap: 174.9,
-        padding: 6.79,
-        borderWidth: 0.57,
-        marginTop: 8,
-        borderColor: '#CCCCCC'
-    },
+  input:{
+    borderRadius: 4.53,
+    gap: 174.9,
+    padding: 6.79,
+    borderWidth: 0.57,
+    marginTop: 8,
+    borderColor: '#CCCCCC'
+  },
 
-    container: {
+  container: {
     paddingTop: 60,
     paddingHorizontal: 20,
     backgroundColor: "#fff",
