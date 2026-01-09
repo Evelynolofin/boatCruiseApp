@@ -9,6 +9,7 @@ import {
   Dimensions,
   Animated,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { useState, useRef, useEffect } from "react";
@@ -20,6 +21,7 @@ import { removeToken } from "@/constants/tokenFile";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const PANEL_WIDTH = SCREEN_WIDTH * 0.4;
+const STATUS_BAR_HEIGHT = Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0; 
 
 type MediaItem = {
   url: string;
@@ -132,7 +134,7 @@ export default function YachtDetails() {
     <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <ScrollView style={{ backgroundColor: "#F8F8F8" }}>
         <View style={styles.navBar}>
-            <View style={{flexDirection:'row', gap: 5, alignItems:'center', paddingTop:20}}>
+            <View style={{flexDirection:'row', gap: 5, alignItems:'center'}}>
                 <Image
                 source={require('@/assets/images/logo.png')}
                 style={{
@@ -145,7 +147,7 @@ export default function YachtDetails() {
                 </Text>
             </View>
       
-            <View style={{flexDirection:'row', gap: 5, justifyContent:'space-between', width:64., paddingTop:20}}>
+            <View style={{flexDirection:'row', gap: 5, justifyContent:'space-between', width:64}}>
               <TouchableOpacity onPress={() => setOpen(true)}>
                   <Ionicons
                   name="menu"
@@ -194,10 +196,9 @@ export default function YachtDetails() {
                   <View
                     style={{
                     position: 'absolute',
-                    top: 0,
-                    left: 40,
-                    right: 0,
-                    bottom: 0,
+                    top: -(STATUS_BAR_HEIGHT + 10),
+                    left: -SCREEN_WIDTH + 40,
+                    width: SCREEN_WIDTH,
                     backgroundColor: 'rgba(0,0,0,0.3)',
                     zIndex: 9,
                   }}
@@ -440,7 +441,8 @@ export default function YachtDetails() {
 
 const styles = StyleSheet.create({
   navBar: {
-    height: 70,
+    height: 50 + STATUS_BAR_HEIGHT,
+    paddingTop: STATUS_BAR_HEIGHT,
     backgroundColor: "#1A1A1A",
     paddingHorizontal: 16,
     flexDirection: "row",
@@ -545,7 +547,7 @@ const styles = StyleSheet.create({
   panel: {
     position: "absolute",
     right: 0,
-    top: 0,
+    top: STATUS_BAR_HEIGHT + 10,
     width: PANEL_WIDTH,
     backgroundColor: "#fff",
     padding: 20,

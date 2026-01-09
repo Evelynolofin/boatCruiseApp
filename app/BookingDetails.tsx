@@ -11,6 +11,7 @@ import {
   Animated,
   Dimensions,
   Alert,
+  Platform,
 } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -23,6 +24,7 @@ import Modal from "react-native-modal";
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const PANEL_WIDTH = SCREEN_WIDTH * 0.4;
 const PANEL_HEIGHT = 215;
+const STATUS_BAR_HEIGHT = Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0
 
 interface Boat {
   boatName?: string;
@@ -114,7 +116,7 @@ export default function BookingDetails() {
 
     router.replace("/auth/Login");
   } catch (error) {
-    console.error("Logout failed", error);
+    // console.error("Logout failed", error);
   }
 };
 
@@ -197,7 +199,7 @@ export default function BookingDetails() {
     <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
     <ScrollView style={styles.container}>
       <View style={styles.navBar}>
-        <View style={{flexDirection:'row', gap: 5, alignItems:'center', paddingTop: 20}}>
+        <View style={{flexDirection:'row', gap: 5, alignItems:'center'}}>
             <Image
               source={require('@/assets/images/logo.png')}
               style={{
@@ -210,7 +212,7 @@ export default function BookingDetails() {
             </Text>
         </View>
 
-        <View style={{flexDirection:'row', gap: 5, justifyContent:'space-between', width:64, paddingTop: 20}}>
+        <View style={{flexDirection:'row', gap: 5, justifyContent:'space-between', width:64}}>
           <TouchableOpacity onPress={() => setOpen(true)}>
               <Ionicons
               name="menu"
@@ -259,10 +261,9 @@ export default function BookingDetails() {
                 <View
                   style={{
                   position: 'absolute',
-                  top: 0,
-                  left: 40,
-                  right: 0,
-                  bottom: 0,
+                  top: -(STATUS_BAR_HEIGHT + 10),
+                  left: -SCREEN_WIDTH + 40,
+                  width: SCREEN_WIDTH,
                   backgroundColor: 'rgba(0,0,0,0.3)',
                   zIndex: 9,
                 }}
@@ -530,7 +531,8 @@ const styles = StyleSheet.create({
 
   navBar:{
     backgroundColor:'#1A1A1A',
-    height: 70,
+    height: 50 + STATUS_BAR_HEIGHT,
+    paddingTop: STATUS_BAR_HEIGHT,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -540,7 +542,7 @@ const styles = StyleSheet.create({
   panel: {
     position: "absolute",
     right: 0,
-    top: 0,
+    top: STATUS_BAR_HEIGHT + 10,
     width: PANEL_WIDTH,
     backgroundColor: "#fff",
     padding: 20,

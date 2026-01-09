@@ -41,3 +41,19 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Google Service Account JSON
+/credentials/credentials.json
+credentials.json
+googleservice.json
+google-services.json
+GoogleService-Info.plist
+
+# Specific keystore files
+@evelynolofin__boatcruiseapp.bak.jks
+evelynolofin__boatcruiseapp.bak_OLD_1.jks
+
+# Backup files
+*.bak
+*.backup
+*.old

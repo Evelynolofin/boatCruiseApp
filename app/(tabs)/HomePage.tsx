@@ -6,6 +6,7 @@ import { ScrollView,
         StyleSheet,
         TouchableOpacity,
         Dimensions,
+        Alert,
  } from "react-native";
 import {
         useFonts,
@@ -79,17 +80,15 @@ export default function homepage(){
             setError(null);
     
             const res = await httpClient.get("/boats");
-    
-            // console.log({response: res.data.data})
-            // console.log({})
+
             if (Array.isArray(res.data.data)) {
             setBoats(res.data.data);
             } else {
-            console.log("Unexpected API response format.")
             setError("Unexpected API response format.");
             }
         } catch (e) {
-            console.error("Failed to load boats", e);
+            Alert.alert("Failed to load boats", (e as any).message || JSON.stringify(e));
+
             setError("Failed to load boats");
         } finally {
             setLoading(false);
@@ -111,7 +110,7 @@ if (!fontsLoaded){
         // console.log({response: res.data.data})
         setSelectedBoat(res.data.data); 
       } catch (e) {
-        console.error("Failed to load boat details", e);
+        // console.error("Failed to load boat details", e);
         setSelectedBoat(null);
       } finally {
         setDetailsLoading(false);
