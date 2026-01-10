@@ -50,7 +50,7 @@ type TabType = "upcoming" | "past";
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const PANEL_WIDTH = SCREEN_WIDTH * 0.4;
 const TWO_HOURS = 2 * 60 * 60 * 1000;
-const STATUS_BAR_HEIGHT = Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0
+const STATUS_BAR_HEIGHT = Platform.OS === "android" ? StatusBar.currentHeight || 0 : 44;
 
 export default function MyBookings() {
   const router = useRouter();

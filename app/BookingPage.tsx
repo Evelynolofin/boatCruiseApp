@@ -63,7 +63,7 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 const PANEL_WIDTH = SCREEN_WIDTH * 0.4;
 const PANEL_HEIGHT = 215;
 const { height } = Dimensions.get("window");
-const STATUS_BAR_HEIGHT = Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0
+const STATUS_BAR_HEIGHT = Platform.OS === "android" ? StatusBar.currentHeight || 0 : 44;
 
 const generateHourSlots = () => {
   const slots: string[] = [];
@@ -605,115 +605,120 @@ useEffect(() => {
 
 
     return(
-        <>
-      <ScrollView style={{backgroundColor: '#F8F8F8'}}>
+      <>
+        
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-        <View style={styles.navBar}>
-          <View style={{flexDirection:'row', gap: 5, alignItems:'center'}}>
-              <Image
-              source={require('@/assets/images/logo.png')}
-              style={{
-                  width: 23.32,
-                  height: 23.32,
-              }}
-              />
-              <Text style={{color: 'white', fontWeight:700, fontSize: 11.66}}>
-                  BoatCruise
-              </Text>
-          </View>
 
-          <View style={{flexDirection:'row', gap: 5, justifyContent:'space-between', width:64}}>
-              <TouchableOpacity onPress={() => setOpen(true)}>
-                  <Ionicons
-                  name="menu"
-                  size={24}
-                  color='white'
-                  />
-                  <Modal isVisible={open} onBackdropPress={() => setOpen(false)}>
-                      <View style={{ backgroundColor: "black", padding: 20, borderRadius: 10 }}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          router.navigate('/(tabs)/HomePage')
-                          setOpen(false);
-                        }}
-                        >
-                            <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>Home</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity>
-                            <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => {
-                            router.navigate('/(tabs)/MyBookings')
-                            setOpen(false);
-                          }}
-                        >
-                            <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
-                              My bookings
-                            </Text>
-                      </TouchableOpacity>
+      <View style={styles.navBar}>
+        <View style={{flexDirection:'row', gap: 5, alignItems:'center'}}>
+          <Image
+          source={require('@/assets/images/logo.png')}
+          style={{
+              width: 23.32,
+              height: 23.32,
+          }}
+          />
+          <Text style={{color: 'white', fontWeight:700, fontSize: 11.66}}>
+              BoatCruise
+          </Text>
+        </View>
 
-                      <TouchableOpacity onPress={() => setOpen(false)}>
-                          <Text style={{ color: "red", fontSize: 16, fontFamily: 'Inter_700Bold' }}>Cancel</Text>
-                      </TouchableOpacity>
-                      </View>
-                  </Modal>
-
-              </TouchableOpacity>
-
-              <View>
-                <TouchableOpacity
-                  onPress={openPanel}
-                  style={{width: 24, height: 24, borderRadius: 60, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'white'}}
+        <View style={{flexDirection:'row', gap: 5, justifyContent:'space-between', width:64}}>
+          <TouchableOpacity onPress={() => setOpen(true)}>
+            <Ionicons
+            name="menu"
+            size={24}
+            color='white'
+            />
+            <Modal isVisible={open} onBackdropPress={() => setOpen(false)}>
+              <View style={{ backgroundColor: "black", padding: 20, borderRadius: 10 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  router.navigate('/(tabs)/HomePage')
+                  setOpen(false);
+                }}
                 >
-                    <Feather
-                    name="user"
-                    size={16}
-                    color='white'
-                    />
+                    <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>Home</Text>
+                </TouchableOpacity>
+                <TouchableOpacity>
+                    <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    router.navigate('/(tabs)/MyBookings')
+                    setOpen(false);
+                  }}
+                >
+                    <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
+                      My bookings
+                    </Text>
                 </TouchableOpacity>
 
-                {profile && (
-                  <View
-                    style={{
-                    position: 'absolute',
-                    top: -(STATUS_BAR_HEIGHT + 10),
-                    left: -SCREEN_WIDTH + 40,
-                    width: SCREEN_WIDTH,
-                    backgroundColor: 'rgba(0,0,0,0.3)',
-                    zIndex: 9,
-                  }}
-                  >
-                    <Animated.View
-                      style={[
-                        styles.panel,
-                        { transform: [{ translateX: slideAnim }] },
-                      ]}
-                    >
-                      <Text style={{fontSize: 16, marginBottom: 10,}}
-                        onPress={() => router.navigate("/UserProfile")}
-                      >
-                        Profile
-                      </Text>
-                      <TouchableOpacity>
-                        <Text style={{fontSize: 16, marginVertical: 10,}}>Settings</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={handleLogout}
-                      >
-                        <Text style={{fontSize: 16, marginVertical: 10,}}>Logout</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity onPress={closePanel}>
-                        <Text style={{marginTop: 30, color: "red", fontWeight: "bold",}}>Close</Text>
-                      </TouchableOpacity>
-                    </Animated.View>
-                  </View>
-                )}
+                <TouchableOpacity onPress={() => setOpen(false)}>
+                    <Text style={{ color: "red", fontSize: 16, fontFamily: 'Inter_700Bold' }}>Cancel</Text>
+                </TouchableOpacity>
               </View>
-            </View>
-          </View>
+            </Modal>
 
+          </TouchableOpacity>
+
+          <View>
+            <TouchableOpacity
+              onPress={openPanel}
+              style={{width: 24, height: 24, borderRadius: 60, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'white'}}
+            >
+                <Feather
+                name="user"
+                size={16}
+                color='white'
+                />
+            </TouchableOpacity>
+
+            {profile && (
+              <View
+                style={{
+                position: 'absolute',
+                top: -(STATUS_BAR_HEIGHT + 10),
+                left: -SCREEN_WIDTH + 40,
+                width: SCREEN_WIDTH,
+                backgroundColor: 'rgba(0,0,0,0.3)',
+                zIndex: 9,
+              }}
+              >
+                <Animated.View
+                  style={[
+                    styles.panel,
+                    { transform: [{ translateX: slideAnim }] },
+                  ]}
+                >
+                  <Text style={{fontSize: 16, marginBottom: 10,}}
+                    onPress={() => router.navigate("/UserProfile")}
+                  >
+                    Profile
+                  </Text>
+                  <TouchableOpacity>
+                    <Text style={{fontSize: 16, marginVertical: 10,}}>Settings</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleLogout}
+                  >
+                    <Text style={{fontSize: 16, marginVertical: 10,}}>Logout</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity onPress={closePanel}>
+                    <Text style={{marginTop: 30, color: "red", fontWeight: "bold",}}>Close</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              </View>
+            )}
+          </View>
+        </View>
+      </View>
+
+      <ScrollView style={{backgroundColor: '#F8F8F8'}}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={{paddingHorizontal: 10, paddingVertical: 20}}>
             <TouchableOpacity 
                 style={{flexDirection: 'row', gap: 2, alignItems:'center'}}
