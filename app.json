@@ -32,11 +32,8 @@
       "package": "com.evelynolofin.boatcruiseapp",
       "permissions": [
         "INTERNET",
-        "ACCESS_NETWORK_STATE",
-        "INTERNET",
         "ACCESS_NETWORK_STATE"
-      ],
-      "usesCleartextTraffic": true
+      ]
     },
     "web": {
       "output": "static"
