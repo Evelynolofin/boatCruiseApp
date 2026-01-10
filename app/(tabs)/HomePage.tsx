@@ -111,6 +111,7 @@ if (!fontsLoaded){
         setSelectedBoat(res.data.data); 
       } catch (e) {
         // console.error("Failed to load boat details", e);
+        Alert.alert("Failed to load boat details", (e as any).message || JSON.stringify(e));
         setSelectedBoat(null);
       } finally {
         setDetailsLoading(false);
@@ -173,7 +174,10 @@ if (!fontsLoaded){
   return(
     <>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      <ScrollView style={{backgroundColor: '#F8F8F8'}}>
+      <ScrollView style={{backgroundColor: '#F8F8F8'}}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.section}>
             <Text style={{fontFamily: 'Inter_600SemiBold',fontSize: 16, color: '#171717'}}>
                 Find A Cruise For Any Occasion
@@ -321,7 +325,7 @@ const styles= StyleSheet.create({
 
     section:{
         paddingHorizontal: 8,
-        paddingTop: 50,
+        paddingTop: 60,
         paddingBottom: 16
     },
 

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import {
   ScrollView,
   Text,
@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
+  RefreshControl,
 } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import Modal from "react-native-modal";
@@ -23,7 +24,7 @@ import { removeToken } from "@/constants/tokenFile";
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const PANEL_WIDTH = SCREEN_WIDTH * 0.4;
 const PANEL_HEIGHT = 280;
-const STATUS_BAR_HEIGHT = Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0
+const STATUS_BAR_HEIGHT = Platform.OS === "android" ? StatusBar.currentHeight || 0 : 44
 
 type Boat = {
   _id: string;
@@ -62,6 +63,7 @@ export default function FeaturedYachts() {
     const [boats, setBoats] = useState<Boat[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
     const slideAnim = useRef(new Animated.Value(PANEL_WIDTH)).current;
     
     const dropAnim = useRef(new Animated.Value(-PANEL_HEIGHT)).current;
@@ -105,34 +107,38 @@ export default function FeaturedYachts() {
           setActiveFilter(null);
         });
       };
+    
+      const fetchBoats = useCallback(async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      
+        const res = await httpClient.get("/boats");
 
-      useEffect(() => {
-          const fetchBoats = async () => {
-            try {
-              setLoading(true);
-              setError(null);
-      
-              const res = await httpClient.get("/boats");
-      
-              // console.log({response: res.data.data})
-              if (Array.isArray(res.data.data)) {
-                setBoats(res.data.data);
-              } else {
-                console.log("Unexpected API response format.")
-                setError("Unexpected API response format.");
-              }
-            } catch (e) {
-              console.error("Failed to load boats", e);
-              setError("Failed to load boats");
-            } finally {
-              setLoading(false);
-            }
-          };
-      
-          fetchBoats();
-        }, []);
+        // console.log({response: res.data.data})
+        if (Array.isArray(res.data.data)) {
+          setBoats(res.data.data);
+        } else {
+          Alert.alert("Unexpected API response format.");
+          setError("Unexpected API response format.");
+        }
+      } catch (e) {
+        Alert.alert("Failed to load boats", (e as any).message || JSON.stringify(e));
+        setError("Failed to load boats");
+      } finally {
+        setLoading(false);
+      }
+    }, []);
+
+    useEffect(() => {
+      fetchBoats();
+    }, [fetchBoats]);
+
+    const onRefresh = async () => {
+      setRefreshing(true);
+      await fetchBoats();
+      setRefreshing(false);
+    };
       
 
   const filterDefs = [
@@ -229,30 +235,30 @@ const handleLogout = async () => {
       })
     }
 
-    const [selectedBoat, setSelectedBoat] = useState<Boat | null>(null);
-    const [detailsLoading, setDetailsLoading] = useState(false);
+  const [selectedBoat, setSelectedBoat] = useState<Boat | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
-const viewDetails = async (boatId: string) => {
-  try {
-    setDetailsLoading(true);
-    const res = await httpClient.get(`/boats/${boatId}`);
-    // console.log({response: res.data.data})
-    setSelectedBoat(res.data.data); 
-  } catch (e) {
-    Alert.alert("Failed to load boats", (e as any).message || JSON.stringify(e));
-    setSelectedBoat(null);
-  } finally {
-    setDetailsLoading(false);
-  }
-};
+  const viewDetails = async (boatId: string) => {
+    try {
+      setDetailsLoading(true);
+      const res = await httpClient.get(`/boats/${boatId}`);
+      // console.log({response: res.data.data})
+      setSelectedBoat(res.data.data); 
+    } catch (e) {
+      Alert.alert("Failed to load boats", (e as any).message || JSON.stringify(e));
+      setSelectedBoat(null);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
 
     
 
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      <ScrollView style={{ backgroundColor: "#F8F8F8" }}>
-        <View style={styles.navBar}>
+
+      <View style={styles.navBar}>
           <View style={{flexDirection:'row', gap: 5, alignItems:'center'}}>
               <Image
               source={require('@/assets/images/logo.png')}
@@ -275,27 +281,27 @@ const viewDetails = async (boatId: string) => {
                 />
                 <Modal isVisible={open} onBackdropPress={() => setOpen(false)}>
                     <View style={{ backgroundColor: "black", padding: 20, borderRadius: 10 }}>
-                    <TouchableOpacity
-                    onPress={() => {
-                      router.navigate('/(tabs)/HomePage')
-                      setOpen(false);
-                    }}
-                    >
-                        <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>Home</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity>
-                        <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
+                      <TouchableOpacity
                       onPress={() => {
-                        router.navigate('/(tabs)/MyBookings')
+                        router.navigate('/(tabs)/HomePage')
                         setOpen(false);
                       }}
-                    >
-                        <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
-                          My bookings
-                        </Text>
-                    </TouchableOpacity>
+                      >
+                          <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>Home</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity>
+                          <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>About Us</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          router.navigate('/(tabs)/MyBookings')
+                          setOpen(false);
+                        }}
+                      >
+                          <Text style={{ fontSize: 16, marginBottom: 10, color: 'white', fontFamily: 'Inter_700Bold' }}>
+                            My bookings
+                          </Text>
+                      </TouchableOpacity>
 
                     <TouchableOpacity onPress={() => setOpen(false)}>
                         <Text style={{ color: "red", fontSize: 16, fontFamily: 'Inter_700Bold' }}>Cancel</Text>
@@ -357,20 +363,25 @@ const viewDetails = async (boatId: string) => {
                 )}
             </View>
           </View>
-        </View>
+      </View>
 
+      <ScrollView style={{ backgroundColor: "#F8F8F8" }}
+        bounces={true}
+        showsVerticalScrollIndicator={false}
+        refreshControl={ <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         <View style={{paddingHorizontal: 10, paddingVertical: 20}}>
-            <TouchableOpacity 
-                style={{flexDirection: 'row', gap: 2, alignItems:'center'}}
-                onPress={() => router.navigate('/(tabs)/HomePage')}
-            >
-                <Ionicons
-                name="arrow-back"
-                size={18}
-                color='#292D329E'
-                />
-                <Text style={{fontWeight:400, fontSize:14, color: '#292D329E'}}>Go back</Text>
-            </TouchableOpacity>
+          <TouchableOpacity 
+            style={{flexDirection: 'row', gap: 2, alignItems:'center'}}
+            onPress={() => router.navigate('/(tabs)/HomePage')}
+        >
+            <Ionicons
+            name="arrow-back"
+            size={18}
+            color='#292D329E'
+            />
+            <Text style={{fontWeight:400, fontSize:14, color: '#292D329E'}}>Go back</Text>
+          </TouchableOpacity>
         </View>
 
           <View style={styles.filterRow}>

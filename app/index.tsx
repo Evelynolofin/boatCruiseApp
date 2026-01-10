@@ -70,7 +70,7 @@ export default function onboarding (){
                         </Text>
                     </View>
 
-                    <View style={{marginTop: 250, flexDirection:'column', alignItems: 'center', gap: 10, marginBottom: 10}}>
+                    <View style={{marginTop: 270, flexDirection:'column', alignItems: 'center', gap: 10, marginBottom: 10}}>
                         <TouchableOpacity
                         onPress={() => router.navigate('/auth/CreateAccount')}
                         style={{backgroundColor: 'white', padding: 10, width: 213, borderRadius: 8}}
