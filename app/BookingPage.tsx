@@ -125,7 +125,7 @@ export default function BookingPage(){
 
     const [fullName, setFullName] = useState(" ");
     const [email, setEmail] = useState(params.email ?? "");
-    const [phone, setPhone] = useState(" ");
+    const [phone, setPhone] = useState("");
 
     const emailRef = useRef<TextInput>(null);
     const phoneRef = useRef<TextInput>(null)
@@ -848,7 +848,7 @@ useEffect(() => {
             />
             <Text style={styles.label}>Phone Number</Text>
             <TextInput
-            placeholder="Enter your phone number"
+            placeholder="08044771234"
             placeholderTextColor='#787878'
             keyboardType="phone-pad"
             style={styles.input}
