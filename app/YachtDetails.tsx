@@ -123,7 +123,7 @@ export default function YachtDetails() {
   }
 
   if (!boat) {
-    return <Text style={{ padding: 20 }}>Boat not found</Text>;
+    return <Text style={{ paddingTop: 200, textAlign: 'center'}}>Boat not found</Text>;
   }
 
   const mediaUrls = Array.isArray(boat.media)

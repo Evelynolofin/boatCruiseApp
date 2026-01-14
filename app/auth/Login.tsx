@@ -38,6 +38,7 @@ export default function login() {
       const token = res.data.data.accessToken;
       if (token) {
         await saveToken(token);
+        await AsyncStorage.setItem("LoginTimestamp", Date.now().toString());
       }
 
         const user = res.data.data.user;

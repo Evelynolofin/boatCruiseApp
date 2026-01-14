@@ -168,7 +168,9 @@ export default function BookingDetails() {
   if (!booking) {
     return (
       <View>
-        <Text>Booking not found</Text>
+        <Text style={{paddingTop: 200, textAlign: 'center'}}>
+          Booking not found
+        </Text>
       </View>
     );
   }

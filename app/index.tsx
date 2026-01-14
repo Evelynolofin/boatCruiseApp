@@ -7,12 +7,15 @@ import { ScrollView,
         StyleSheet,
         TouchableOpacity,
         Dimensions,
+        Alert,
  } from "react-native";
 import { router } from "expo-router";
 import { useState, useEffect, useRef } from "react";
 import * as SplashScreen from "expo-splash-screen";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const {height} = Dimensions.get('window')
+const {height, width} = Dimensions.get('window')
+const isSmallScreen = height < 700;
 
 SplashScreen.preventAutoHideAsync();
 let ShownSplash = false;
@@ -45,6 +48,33 @@ export default function onboarding (){
         );
     }
 
+    const handleGuest = async () => {
+        try {
+            const keys = [
+                'userToken',
+                'userData',
+                'userId',
+                'userEmail',
+                'userName',
+                'userPhone',
+                'userProfile',
+                'authToken',
+                'refreshToken',
+                "paymentRefrence",
+                'pendingBookings',
+                'savedBookings',
+            ]
+
+            await AsyncStorage.multiRemove(keys);
+
+            await AsyncStorage.setItem("isGuest", "true");
+
+            router.replace('/(tabs)/HomePage');
+        } catch (error) {
+            Alert.alert("Error", "An error occurred while continuing as guest. Please try again.");
+        }
+    }
+
     return(
         <>
             <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
@@ -70,7 +100,8 @@ export default function onboarding (){
                         </Text>
                     </View>
 
-                    <View style={{marginTop: 270, flexDirection:'column', alignItems: 'center', gap: 10, marginBottom: 10}}>
+                    <View style={{flex: 1, minHeight: isSmallScreen ? 100 : 700}}>
+                        <View style={{marginTop: 270, flexDirection:'column', alignItems: 'center', gap: 10, marginBottom: 10}}>
                         <TouchableOpacity
                         onPress={() => router.navigate('/auth/CreateAccount')}
                         style={{backgroundColor: 'white', padding: 10, width: 213, borderRadius: 8}}
@@ -79,17 +110,18 @@ export default function onboarding (){
                         </TouchableOpacity>
                         <TouchableOpacity
                         style={{backgroundColor: 'white', padding: 10, width: 213, borderRadius: 8}}
-                        onPress={() => router.navigate('/(tabs)/HomePage')}
+                        onPress={handleGuest}
                         >
                             <Text style={{fontSize: 16, fontWeight: 700, color: '#001718', textAlign: 'center'}}>Continue as guest</Text>
                         </TouchableOpacity>
-                    </View>
+                        </View>
 
-                    <TouchableOpacity
-                    onPress={() => router.navigate('/auth/Login')}
-                    >
-                        <Text style={{fontSize: 16, fontWeight: 700, color: 'white', textAlign: 'center'}}>Already have an account? Login</Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                        onPress={() => router.navigate('/auth/Login')}
+                        >
+                            <Text style={{fontSize: 16, fontWeight: 700, color: 'white', textAlign: 'center'}}>Already have an account? Login</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </ImageBackground>
         </>

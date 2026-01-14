@@ -436,6 +436,13 @@ useEffect(() => {
 // const isToday =
 //   selectedDate === new Date().toISOString().split("T")[0];
 
+const isTimePassed = (date: string, time: Date) => {
+  const selectedDateTime = new Date(date);
+  selectedDateTime.setHours(time.getHours(), time.getMinutes(), 0, 0);
+  return selectedDateTime < new Date();
+};
+
+
 const createBooking = async () => {
   const token = await getToken();
   if (!token) {
@@ -467,8 +474,18 @@ const createBooking = async () => {
   
   if (!selectedDate) return Alert.alert("Error", "Select a date");
   if (endTime <= startTime) return Alert.alert("Error", "End time must be after start time");
-  if (!guest) return Alert.alert("Error", "Select Guest");
-  if (!occasion) return Alert.alert("Error", "Select occasion");
+  if (!guest) {
+    Alert.alert("Error", "Select number of guests", [
+      { text: "OK", onPress: () => setStep(2) }
+    ]);
+    return;
+  }
+  if (!occasion) {
+    Alert.alert("Error", "Select occasion", [
+      { text: "OK", onPress: () => setStep(2) }
+    ]);
+    return;
+  }
 
   try {
     setLoading(true);
@@ -518,8 +535,72 @@ const createBooking = async () => {
     setEditingRestoredBooking(false);
 
   } catch (err: any) {
-    Alert.alert("Error", err.response?.data?.message || err.message || "Booking failed. Please try again.");
     setLoading(false);
+    
+    const errorMessage = err.response?.data?.message || err.message || "Booking failed";
+    
+    if (errorMessage.toLowerCase().includes('already booked') || 
+        errorMessage.toLowerCase().includes('time slot') ||
+        errorMessage.toLowerCase().includes('not available')) {
+      Alert.alert(
+        "Time Slot Unavailable",
+        "This date and time has already been booked. Please select a different time slot.",
+        [
+          { 
+            text: "Select Different Time", 
+            onPress: () => setStep(1) 
+          }
+        ]
+      );
+    } else if (errorMessage.toLowerCase().includes('token') || 
+               errorMessage.toLowerCase().includes('expired') ||
+               errorMessage.toLowerCase().includes('unauthorized')) {
+      Alert.alert(
+        "Session Expired",
+        "Your session has expired. Please login again.",
+        [
+          { 
+            text: "Go to Login", 
+            onPress: async () => {
+              await removeToken();
+              await AsyncStorage.multiRemove([
+                "token",
+                "user",
+                "userName",
+                "userEmail",
+                "userPhone",
+              ]);
+              router.replace("/auth/Login");
+            }
+          }
+        ]
+      );
+    } else if (errorMessage.toLowerCase().includes('capacity') || 
+               errorMessage.toLowerCase().includes('guest')) {
+      Alert.alert(
+        "Invalid Guest Count",
+        errorMessage,
+        [
+          { 
+            text: "Update Guest Count", 
+            onPress: () => setStep(2) 
+          }
+        ]
+      );
+    } else if (errorMessage.toLowerCase().includes('occasion')) {
+      Alert.alert(
+        "Occasion Required",
+        "Please select an occasion for your booking.",
+        [
+          { 
+            text: "Select Occasion", 
+            onPress: () => setStep(2) 
+          }
+        ]
+      );
+    } else {
+      Alert.alert("Error", errorMessage);
+    }
   }
 };
 
@@ -928,7 +1009,20 @@ useEffect(() => {
                   >
                     <ScrollView nestedScrollEnabled>
                     {timeSlots
-                      .filter((t) => Number(t.split(":")[0]) >= 8)
+                      .filter((t) => {
+                        const hour = Number(t.split(":")[0]);
+
+                        if (hour < 8 || hour > 23) return false;
+
+                        if (selectedDate) {
+                          const [h, m] = t.split(":").map(Number);
+                          const d = new Date(selectedDate);
+                          d.setHours(h, m || 0, 0, 0);
+                          return d > new Date();
+                        }
+                        return true;
+                      })
+                      
                       .map((t) => {
                         const [h, m] = t.split(":").map(Number);
                         const candidate = new Date(startTime);
@@ -1001,7 +1095,14 @@ useEffect(() => {
                           d.setHours(h, m || 0, 0, 0);
                           return d;
                         })
-                        .filter((d) => d > startTime)
+                        .filter((d) => {
+                          if (d <= startTime) return false;
+
+                          if (selectedDate) {
+                            return d > new Date();
+                          }
+                          return true;
+                        })
                         .map((candidate, idx) => {
 
                           return (
@@ -1133,16 +1234,26 @@ useEffect(() => {
                     return;
                   }
 
+                  const maxCapacity = boat?.capacity ||40;
+
                   if (num < 1) {
                     setGuest(0);
-                  } else if (num > 40) {
-                    setGuest(40);
+                  } else if (num > maxCapacity) {
+                    Alert.alert(
+                      "Capacity Exceeded",
+                      `The maximum capacity for this boat is ${maxCapacity} guests.
+                      Please enter a number between 1 and ${maxCapacity}.`,
+                      [{ text: "OK" }]
+                    )
+                    setGuest(maxCapacity);
                   } else {
                     setGuest(num);
                   }
                 }}
               />
-                <Text style={{fontSize: 10, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>Maximum capacity: 40</Text>
+                <Text style={{fontSize: 10, fontFamily: 'Inter_400Regular', fontWeight: 400,}}>
+                  Maximum capacity: {boat?.capacity || 40}
+                </Text>
 
                 <Text style={styles.label}>Occasion</Text>
 
@@ -1492,10 +1603,13 @@ useEffect(() => {
                 </Text>
 
                 <TouchableOpacity
-                  onPress={() => router.navigate({
+                  onPress={() => {
+                  setShowSuccess(false);
+                  router.push({
                     pathname: "/(tabs)/MyBookings",
                     params: {boatId: boatId}
-                  })}
+                  });
+                }}
                   style={{ backgroundColor: '#1A1A1A', borderRadius: 26.16, padding: 15, marginBottom: 10, marginTop: 20 }}
                 >
                   <Text style={{ fontFamily: 'Inter_500Medium', fontWeight: "500", fontSize:12, color: 'white', textAlign:"center" }}>View Booking</Text>

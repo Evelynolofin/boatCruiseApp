@@ -234,24 +234,6 @@ const handleLogout = async () => {
           }
       })
     }
-
-  const [selectedBoat, setSelectedBoat] = useState<Boat | null>(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-
-  const viewDetails = async (boatId: string) => {
-    try {
-      setDetailsLoading(true);
-      const res = await httpClient.get(`/boats/${boatId}`);
-      // console.log({response: res.data.data})
-      setSelectedBoat(res.data.data); 
-    } catch (e) {
-      Alert.alert("Failed to load boats", (e as any).message || JSON.stringify(e));
-      setSelectedBoat(null);
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
-
     
 
   return (
