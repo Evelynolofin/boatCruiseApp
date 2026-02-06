@@ -45,6 +45,10 @@ type Boat = {
 };
 
 export default function FeaturedYachts() {
+
+  useEffect(() => {
+    console.log('🏠 HOME PAGE MOUNTED');
+  }, []);
   const [open, setOpen] = useState (false)
 
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({});
@@ -226,7 +230,7 @@ const handleLogout = async () => {
   
     const goToBooking = (boat: Boat) =>{
       router.push({
-        pathname: ("/BookingPage"),
+        pathname: ("../BookingPage"),
           params: {
             boatId: boat._id,
           pricePerHour: String(boat.pricePerHour),
@@ -386,14 +390,17 @@ const handleLogout = async () => {
                 ) : (
                   <TextInput
                     placeholder={f.label}
-                    placeholderTextColor='#1A1A1A'
+                    placeholderTextColor="#1A1A1A"
                     keyboardType="numeric"
+                    returnKeyType="done"
+                    maxLength={6}
                     style={styles.input}
                     value={selectedValues[f.key] || ""}
                     onChangeText={(text) =>
-                      setSelectedValues((s) => ({ ...s, [f.key]: text }))
+                      setSelectedValues((s) => ({ ...s, [f.key]: text.slice(0, 6) }))
                     }
                   />
+
                 )}
               </View>
             ))}

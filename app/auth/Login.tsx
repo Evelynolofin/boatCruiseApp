@@ -51,7 +51,7 @@ export default function login() {
               console.log("userName:", user?.fullName);
               console.log("userPhone:", user?.phoneNumber);
 
-      console.log("LOGIN SUCCESS:", res.data);
+      console.log("LOGIN SUCCESSFUL:");
 
       const savedBookingString = await AsyncStorage.getItem("pendingBooking")
 
@@ -62,7 +62,7 @@ export default function login() {
           setLoading(false)
 
           router.push({
-            pathname: "/BookingPage",
+            pathname: "../BookingPage",
             params:{
               boatId: pendingBooking.boatId,
               selectedDate: pendingBooking.selectedDate,
@@ -259,7 +259,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontFamily: "Inter_600SemiBold",
     fontSize: 16,
-    // fontWeight: 600,
   },
 
   signupText: {

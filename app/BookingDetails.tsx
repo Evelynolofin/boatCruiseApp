@@ -154,12 +154,26 @@ export default function BookingDetails() {
     return null;
   }, [boat]);
 
-  const canCancelBooking = useMemo (() =>{
-    if (!booking?.paymentStatus) return false;
 
-    const status = booking.paymentStatus.toUpperCase();
-    return status === "SUCCESSFUL"
-  }, [booking?.paymentStatus])
+  const bookingStatus = useMemo(() => {
+  return booking?.paymentStatus?.toUpperCase() ?? "UNKNOWN";
+  }, [booking?.paymentStatus]);
+
+  const isBookingCompleted = useMemo(() => {
+  if (!booking?.endDate) return false;
+  return new Date(booking.endDate) <= new Date();
+  }, [booking?.endDate]);
+
+
+  const canCancelBooking = useMemo(() => {
+    return (
+      bookingStatus === "SUCCESSFUL" &&
+      !isBookingCompleted &&
+      !booking?.refund
+    );
+  }, [bookingStatus, isBookingCompleted, booking?.refund]);
+
+
 
   if (loading) {
     return <ActivityIndicator style={{ marginTop: 40 }} size="large" />;
@@ -532,21 +546,28 @@ export default function BookingDetails() {
         </TouchableOpacity>
       )}
 
-      {!canCancelBooking && booking.paymentStatus && (
+      {!canCancelBooking && (
         <View style={styles.infoBox}>
-          <Ionicons name="information-circle-outline" size={20} color="#666"/>
+          <Ionicons name="information-circle-outline" size={20} color="#666" />
           <Text style={styles.infoText}>
-            {booking.paymentStatus.toUpperCase() === "CANCELLED"
-            ?"This booking has been cancelled"
-            : booking.paymentStatus.toUpperCase() === "PENDING"
-            ?"Payment is pending. Complete payment to manage this booking"
-            : booking.paymentStatus.toUpperCase() === "FAILED"
-            ?"Payment failed. This booking has be cancelled"
-            : "This booking has be cancelled"
-          }
+            {bookingStatus === "REFUNDED" &&
+              "This booking has already been cancelled and refunded."}
+
+            {bookingStatus === "CANCELLED" &&
+              "This booking has been cancelled."}
+
+            {bookingStatus === "FAILED" &&
+              "Payment failed. This booking is no longer active."}
+
+            {bookingStatus === "PENDING" &&
+              "Payment is pending. Complete payment to manage this booking."}
+
+            {bookingStatus === "SUCCESSFUL" && isBookingCompleted &&
+              "This trip has already been completed."}
           </Text>
         </View>
       )}
+
 
       <View style={{ height: 40 }} />
     </ScrollView>
