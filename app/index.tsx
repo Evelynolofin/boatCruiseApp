@@ -13,6 +13,8 @@ import { router } from "expo-router";
 import { useState, useEffect, useRef } from "react";
 import * as SplashScreen from "expo-splash-screen";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { removeToken } from "@/constants/tokenFile";
+import { httpClient } from "@/constants/httpClient";
 
 const {height, width} = Dimensions.get('window')
 const isSmallScreen = height < 700;
@@ -22,6 +24,7 @@ let ShownSplash = false;
 
 export default function onboarding (){
     const [loading, setLoading] = useState(false);
+    const [profile, setProfile] = useState(false);
 
     useEffect(() => {
        async function prepare (){
@@ -50,30 +53,51 @@ export default function onboarding (){
 
     const handleGuest = async () => {
         try {
-            const keys = [
-                'userToken',
-                'userData',
-                'userId',
-                'userEmail',
-                'userName',
-                'userPhone',
-                'userProfile',
-                'authToken',
-                'refreshToken',
-                "paymentRefrence",
-                'pendingBookings',
-                'savedBookings',
-            ]
+        // Remove any stored token
+        await removeToken();
 
-            await AsyncStorage.multiRemove(keys);
+        // Keys to remove from AsyncStorage
+        const keys = [
+        "userToken",
+        "userData",
+        "userId",
+        "userEmail",
+        "userName",
+        "userPhone",
+        "userProfile",
+        "authToken",
+        "bookings",
+        "myBookings",
+        "paymentReference",
+        "refreshToken",
+        "pendingBookings",
+        "savedBookings",
+        ];
 
-            await AsyncStorage.setItem("isGuest", "true");
+        // Remove all stored keys
+        await AsyncStorage.multiRemove(keys);
 
-            router.replace('/(tabs)/HomePage');
-        } catch (error) {
-            Alert.alert("Error", "An error occurred while continuing as guest. Please try again.");
-        }
+        // Remove Authorization header from httpClient
+        delete httpClient.defaults.headers.common["Authorization"];
+
+        // Reset profile state
+        setProfile(false);
+
+        // Mark as guest
+        await AsyncStorage.setItem("isGuest", "true");
+
+        setLoading(true);
+
+        router.replace("/(tabs)/HomePage");
+    } catch (error) {
+        console.error("handleGuest error:", error);
+        Alert.alert(
+        "Error",
+        "An error occurred while continuing as guest. Please try again."
+        );
     }
+    };
+
 
     return(
         <>

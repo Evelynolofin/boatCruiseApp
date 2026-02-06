@@ -198,7 +198,8 @@ export default function MyBookings() {
   return (
     <>
     <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-    <View style={styles.container}>
+    <View style={styles.container}
+    >
       <View style={styles.navBar}>
         <View style={{flexDirection:'row', gap: 5, alignItems:'center'}}>
             <Image

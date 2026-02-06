@@ -1098,36 +1098,36 @@ useEffect(() => {
                         .filter((d) => {
                           if (d <= startTime) return false;
 
-                          if (selectedDate) {
+                          if (
+                            selectedDate &&
+                            new Date(selectedDate).toDateString() === new Date().toDateString()
+                          ) {
                             return d > new Date();
                           }
+                          
                           return true;
                         })
-                        .map((candidate, idx) => {
-
-                          return (
-                            <TouchableOpacity
-                              key={idx}
-                              style={[
-                                styles.dropdownItem,
-                              ]}
-                              onPress={() => {
-                                setEndTime(candidate);
-                                setShowEndDropdown(false);
-                              }}
-                            >
-                              <Text>
-                                {candidate.toLocaleTimeString("en-GB", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
+                        .map((candidate, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            style={styles.dropdownItem}
+                            onPress={() => {
+                              setEndTime(candidate);
+                              setShowEndDropdown(false);
+                            }}
+                          >
+                            <Text>
+                              {candidate.toLocaleTimeString("en-GB", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
                     </ScrollView>
                   </View>
                 )}
+
               </View>
             </View>
           </View>
@@ -1864,3 +1864,4 @@ const styles= StyleSheet.create({
     paddingHorizontal: 16,
   },
 })
+

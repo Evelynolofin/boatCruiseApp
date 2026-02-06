@@ -1,15 +1,16 @@
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useAutoLogout } from "@/hooks/useAutoLogout";
+import { Platform, View } from "react-native";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import { useColorScheme } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import "react-native-reanimated";
 import * as NavigationBar from 'expo-navigation-bar';
-
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useEffect } from "react";
-import { Platform } from "react-native";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const { updateActivity } = useAutoLogout();
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -19,8 +20,14 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <ThemeProvider value={DefaultTheme}>
-      <Stack
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View
+        style={{ flex: 1 }}
+        onTouchStart={updateActivity}
+        onTouchMove={updateActivity}
+      >
+        <ThemeProvider value={DefaultTheme}>
+          <Stack
         screenOptions={{
           headerShown: false,
           contentStyle: { flex: 1 },
@@ -44,6 +51,8 @@ export default function RootLayout() {
         translucent={false}
         backgroundColor="#ffffff"
       />
-    </ThemeProvider>
+        </ThemeProvider>
+      </View>
+    </GestureHandlerRootView>
   );
 }

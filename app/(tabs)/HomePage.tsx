@@ -23,8 +23,6 @@ import {Arimo_700Bold} from '@expo-google-fonts/arimo'
 import {useRouter, router} from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from "react";
 import { httpClient } from "@/constants/httpClient";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { removeToken } from "@/constants/tokenFile";
 
 
 type MediaItem = { url: string };
@@ -77,100 +75,38 @@ export default function homepage(){
     const availableBoats = boats.filter(boat => boat.pricePerHour > 0);
     const boatsToDisplay = availableBoats?.slice(0, 6) || [];
 
-
    const fetchBoats = useCallback(async () => {
          try {
            setLoading(true);
            setError(null);
    
-           const res = await httpClient.get("/boats");
-   
-           // console.log({response: res.data.data})
-           if (Array.isArray(res.data.data)) {
-             setBoats(res.data.data);
-           } else {
-             Alert.alert("Unexpected API response format.");
-             setError("Unexpected API response format.");
-           }
-         } catch (e) {
-           Alert.alert("Failed to load boats", (e as any).message || JSON.stringify(e));
-           setError("Failed to load boats");
-         } finally {
-           setLoading(false);
-         }
-       }, []);
-   
-       useEffect(() => {
-         fetchBoats();
-       }, [fetchBoats]);
-   
-       const onRefresh = async () => {
-         setRefreshing(true);
-         await fetchBoats();
-         setRefreshing(false);
-       };
+    const res = await httpClient.get("/boats");
 
-       const appState = useRef(AppState.currentState);
-    const AUTO_LOGOUT_TIME = 30 * 60 * 1000;
-
-    const handleAutoLogout = async () => {
-    try {
-        await removeToken();
-        await AsyncStorage.multiRemove([
-        "token",
-        "user",
-        "userName",
-        "userEmail",
-        "userPhone",
-        "loginTimestamp",
-        "bookings",
-        "myBookings",
-        "paymentReference",
-        ]);
-
-        delete httpClient.defaults.headers.common["Authorization"];
-
-        Alert.alert(
-        "Session Expired",
-        "You have been logged out due to inactivity.",
-        [{ text: "OK", onPress: () => router.replace("/auth/Login") }]
-        );
-    } catch (error) {
-        Alert.alert("Auto-logout failed", (error as any).message || JSON.stringify(error));
-    }
-    };
-
-    useEffect(() => {
-    const checkSession = async () => {
-        const loginTimestamp = await AsyncStorage.getItem("loginTimestamp");
-        
-        if (loginTimestamp) {
-        const timeDifference = Date.now() - parseInt(loginTimestamp, 10);
-        
-        if (timeDifference >= AUTO_LOGOUT_TIME) {
-            await handleAutoLogout();
+        // console.log({response: res.data.data})
+        if (Array.isArray(res.data.data)) {
+            setBoats(res.data.data);
+        } else {
+            Alert.alert("Unexpected API response format.");
+            setError("Unexpected API response format.");
         }
+        } catch (e) {
+        Alert.alert("Failed to load boats", (e as any).message || JSON.stringify(e));
+        setError("Failed to load boats");
+        } finally {
+        setLoading(false);
         }
-    };
-
-    checkSession(); 
-
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-        if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        checkSession();
-        }
-        appState.current = nextAppState;
-    });
-
-    const interval = setInterval(checkSession, 60000); 
-
-    return () => {
-        subscription.remove();
-        clearInterval(interval);
-    };
     }, []);
+   
+    useEffect(() => {
+        fetchBoats();
+    }, [fetchBoats]);
+   
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await fetchBoats();
+        setRefreshing(false);
+    };
 
-    
     if (!fontsLoaded){
         return null
     }
@@ -236,6 +172,7 @@ export default function homepage(){
         bounces={true}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        scrollEventThrottle={400}
       >
         <View style={styles.section}>
             <Text style={{fontFamily: 'Inter_600SemiBold',fontSize: 16, color: '#171717'}}>
@@ -406,7 +343,6 @@ const styles= StyleSheet.create({
         position:'absolute', 
         bottom: 110, 
         right: 8,
-        // gap:4.27,
         paddingVertical: 1.71,
         paddingHorizontal: 3.42,
         borderRadius: 2.56,
