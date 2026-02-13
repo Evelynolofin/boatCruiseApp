@@ -53,10 +53,8 @@ export default function onboarding (){
 
     const handleGuest = async () => {
         try {
-        // Remove any stored token
         await removeToken();
 
-        // Keys to remove from AsyncStorage
         const keys = [
         "userToken",
         "userData",
@@ -74,16 +72,12 @@ export default function onboarding (){
         "savedBookings",
         ];
 
-        // Remove all stored keys
         await AsyncStorage.multiRemove(keys);
 
-        // Remove Authorization header from httpClient
         delete httpClient.defaults.headers.common["Authorization"];
 
-        // Reset profile state
         setProfile(false);
 
-        // Mark as guest
         await AsyncStorage.setItem("isGuest", "true");
 
         setLoading(true);
